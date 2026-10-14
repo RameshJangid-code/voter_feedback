@@ -1,0 +1,368 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // This security rules file assumes the following data structures:
+    //
+    // Collection: site_content
+    // Document ID: contentId (e.g., 'main_content')
+    // Fields:
+    //   - candidateName: string (required, 1-150 chars)
+    //   - candidateCategory: string (required, 1-150 chars)
+    //   - village: string (required, 1-150 chars)
+    //   - candidatePhotoUrl: string (optional, 0-1000 chars)
+    //   - bioHindi: string (required, 0-10000 chars)
+    //   - bioEnglish: string (required, 0-10000 chars)
+    //   - visionHindi: string (required, 0-10000 chars)
+    //   - visionEnglish: string (required, 0-10000 chars)
+    //   - priorities: list of maps (required, max 30 items)
+    //   - contact: map (required, addressHi, addressEn, phone, email, visitingHoursHi, visitingHoursEn)
+    //   - faqs: list of maps (required, max 50 items)
+    //   - announcements: list of maps (required, max 50 items)
+    //   - updatedAt: string (required, 1-100 chars)
+    //
+    // Collection: public_feedback
+    // Document ID: feedbackId (e.g., 'fb-...')
+    // Fields:
+    //   - feedbackId: string (required, immutable, 1-100 chars)
+    //   - category: string (required, enum: water, roads, drainage, streetlights, education, health, employment, govSchemes, cleanliness, other)
+    //   - description: string (required, 10-1500 chars)
+    //   - suggestedImprovement: string (optional, 0-1500 chars)
+    //   - priority: string (required, enum: low, medium, high)
+    //   - ward: string (optional, 0-100 chars)
+    //   - villageDevelopmentSuggestion: string (optional, 0-1500 chars)
+    //   - moderationStatus: string (required, enum: approved, pending, hidden; create: approved|pending)
+    //   - status: string (required, enum: pending, under_review, addressed, resolved; create: pending)
+    //   - internalNotes: string (optional, 0-2000 chars)
+    //   - createdAt: string (required, immutable, 1-100 chars)
+    //   - isPublic: bool (optional)
+    //
+    // Collection: anonymous_opinions
+    // Document ID: responseId (e.g., 'op-...')
+    // Fields:
+    //   - responseId: string (required, matches path, 1-100 chars)
+    //   - selectedOption: string (required, enum: support, undecided, other)
+    //   - createdAt: string (required, 1-100 chars)
+    //   - Strictly NO PII fields allowed.
+    //
+    // Collection: followup_requests
+    // Document ID: requestId (e.g., 'req-...')
+    // Fields:
+    //   - requestId: string (required, immutable, matches path, 1-100 chars)
+    //   - relatedFeedbackId: string (required, immutable, 1-100 chars)
+    //   - consentToContact: bool (required, must be true)
+    //   - contactName: string (optional, 0-100 chars)
+    //   - contactPhone: string (optional, 0-30 chars)
+    //   - ward: string (optional, 0-100 chars)
+    //   - createdAt: string (required, immutable, 1-100 chars)
+    //
+    // Collection: admins
+    // Document ID: adminId (matches uid)
+    // Fields:
+    //   - uid: string (required, immutable, matches adminId, 1-128 chars)
+    //   - email: string (required, valid email format, 1-100 chars)
+    //   - displayName: string (optional, 0-100 chars)
+    //   - role: string (required, enum: superadmin, admin, moderator)
+    //   - createdAt: string (required, immutable, 1-100 chars)
+    //
+    // Collection: audit_logs
+    // Document ID: logId (e.g., 'log-...')
+    // Fields:
+    //   - logId: string (required, matches logId, 1-100 chars)
+    //   - adminEmail: string (required, valid email, 1-100 chars)
+    //   - action: string (required, 1-100 chars)
+    //   - targetId: string (required, 1-100 chars)
+    //   - details: string (required, 0-2000 chars)
+    //   - timestamp: string (required, 1-100 chars)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    // Check if the request is from an authenticated user
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Role-based authorization: check if caller has verified administrator privileges
+    function isAdmin() {
+      return isAuthenticated() && (
+        ('role' in request.auth.token && request.auth.token.role in ['admin', 'superadmin', 'moderator']) ||
+        ('admin' in request.auth.token && request.auth.token.admin == true) ||
+        ('email' in request.auth.token &&
+         request.auth.token.email_verified == true &&
+         request.auth.token.email in ['admin@budivada.in', 'sarpanch@budivada.in']) ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    // Validate email format
+    function isValidEmail(email) {
+      return email is string &&
+        email.matches('^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$');
+    }
+
+    // Validate optional string (if field is present in map, must be string and conform to length bounds)
+    function isOptionalStringValid(data, field, minLen, maxLen) {
+      return !(field in data) ||
+             (data[field] is string && data[field].size() >= minLen && data[field].size() <= maxLen);
+    }
+
+    // Validate optional boolean (if field is present, must be boolean)
+    function isOptionalBoolValid(data, field) {
+      return !(field in data) || (data[field] is bool);
+    }
+
+    // Feedback enum validators
+    function isValidFeedbackCategory(category) {
+      return category in [
+        'water', 'roads', 'drainage', 'streetlights',
+        'education', 'health', 'employment', 'govSchemes',
+        'cleanliness', 'other'
+      ];
+    }
+
+    function isValidFeedbackPriority(priority) {
+      return priority in ['low', 'medium', 'high'];
+    }
+
+    function isValidModerationStatus(status) {
+      return status in ['approved', 'pending', 'hidden'];
+    }
+
+    function isValidFeedbackStatus(status) {
+      return status in ['pending', 'under_review', 'addressed', 'resolved'];
+    }
+
+    // Contact map validator for site_content
+    function isValidContactMap(contact) {
+      return contact is map &&
+        contact.keys().hasAll(['addressHi', 'addressEn', 'phone', 'email', 'visitingHoursHi', 'visitingHoursEn']) &&
+        contact.keys().hasOnly(['addressHi', 'addressEn', 'phone', 'email', 'visitingHoursHi', 'visitingHoursEn']) &&
+        contact.addressHi is string && contact.addressHi.size() <= 500 &&
+        contact.addressEn is string && contact.addressEn.size() <= 500 &&
+        contact.phone is string && contact.phone.size() <= 50 &&
+        contact.email is string && contact.email.size() <= 100 &&
+        contact.visitingHoursHi is string && contact.visitingHoursHi.size() <= 300 &&
+        contact.visitingHoursEn is string && contact.visitingHoursEn.size() <= 300;
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    // Validator: site_content
+    function isValidSiteContent(data) {
+      return data.keys().hasAll([
+          'candidateName', 'candidateCategory', 'village',
+          'bioHindi', 'bioEnglish', 'visionHindi', 'visionEnglish',
+          'priorities', 'contact', 'faqs', 'announcements', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'candidateName', 'candidateCategory', 'village', 'candidatePhotoUrl',
+          'bioHindi', 'bioEnglish', 'visionHindi', 'visionEnglish',
+          'priorities', 'contact', 'faqs', 'announcements', 'updatedAt'
+        ]) &&
+        data.candidateName is string && data.candidateName.size() > 0 && data.candidateName.size() <= 150 &&
+        data.candidateCategory is string && data.candidateCategory.size() > 0 && data.candidateCategory.size() <= 150 &&
+        data.village is string && data.village.size() > 0 && data.village.size() <= 150 &&
+        isOptionalStringValid(data, 'candidatePhotoUrl', 0, 1000) &&
+        data.bioHindi is string && data.bioHindi.size() <= 10000 &&
+        data.bioEnglish is string && data.bioEnglish.size() <= 10000 &&
+        data.visionHindi is string && data.visionHindi.size() <= 10000 &&
+        data.visionEnglish is string && data.visionEnglish.size() <= 10000 &&
+        data.priorities is list && data.priorities.size() <= 30 &&
+        isValidContactMap(data.contact) &&
+        data.faqs is list && data.faqs.size() <= 50 &&
+        data.announcements is list && data.announcements.size() <= 50 &&
+        data.updatedAt is string && data.updatedAt.size() <= 100;
+    }
+
+    // Validator: public_feedback creation
+    function isValidPublicFeedbackCreate(data, feedbackId) {
+      return data.keys().hasAll([
+          'feedbackId', 'category', 'description', 'priority',
+          'moderationStatus', 'status', 'createdAt'
+        ]) &&
+        data.keys().hasOnly([
+          'feedbackId', 'category', 'description', 'suggestedImprovement',
+          'priority', 'ward', 'villageDevelopmentSuggestion',
+          'moderationStatus', 'status', 'internalNotes', 'createdAt', 'isPublic'
+        ]) &&
+        data.feedbackId is string && data.feedbackId == feedbackId && data.feedbackId.size() > 0 && data.feedbackId.size() <= 100 &&
+        data.category is string && isValidFeedbackCategory(data.category) &&
+        data.description is string && data.description.size() >= 10 && data.description.size() <= 1500 &&
+        data.priority is string && isValidFeedbackPriority(data.priority) &&
+        data.moderationStatus is string && (data.moderationStatus == 'approved' || data.moderationStatus == 'pending') &&
+        data.status is string && data.status == 'pending' &&
+        data.createdAt is string && data.createdAt.size() > 0 && data.createdAt.size() <= 100 &&
+        isOptionalStringValid(data, 'suggestedImprovement', 0, 1500) &&
+        isOptionalStringValid(data, 'ward', 0, 100) &&
+        isOptionalStringValid(data, 'villageDevelopmentSuggestion', 0, 1500) &&
+        isOptionalStringValid(data, 'internalNotes', 0, 2000) &&
+        isOptionalBoolValid(data, 'isPublic');
+    }
+
+    // Validator: public_feedback update (admin only)
+    function isValidPublicFeedbackUpdate(data, existingData, feedbackId) {
+      return data.keys().hasAll([
+          'feedbackId', 'category', 'description', 'priority',
+          'moderationStatus', 'status', 'createdAt'
+        ]) &&
+        data.keys().hasOnly([
+          'feedbackId', 'category', 'description', 'suggestedImprovement',
+          'priority', 'ward', 'villageDevelopmentSuggestion',
+          'moderationStatus', 'status', 'internalNotes', 'createdAt', 'isPublic'
+        ]) &&
+        data.feedbackId == existingData.feedbackId &&
+        data.createdAt == existingData.createdAt &&
+        data.category is string && isValidFeedbackCategory(data.category) &&
+        data.description is string && data.description.size() >= 10 && data.description.size() <= 1500 &&
+        data.priority is string && isValidFeedbackPriority(data.priority) &&
+        data.moderationStatus is string && isValidModerationStatus(data.moderationStatus) &&
+        data.status is string && isValidFeedbackStatus(data.status) &&
+        isOptionalStringValid(data, 'suggestedImprovement', 0, 1500) &&
+        isOptionalStringValid(data, 'ward', 0, 100) &&
+        isOptionalStringValid(data, 'villageDevelopmentSuggestion', 0, 1500) &&
+        isOptionalStringValid(data, 'internalNotes', 0, 2000) &&
+        isOptionalBoolValid(data, 'isPublic');
+    }
+
+    // Validator: anonymous_opinions creation
+    function isValidAnonymousOpinion(data, responseId) {
+      return data.keys().hasAll(['responseId', 'selectedOption', 'createdAt']) &&
+        data.keys().hasOnly(['responseId', 'selectedOption', 'createdAt']) &&
+        !data.keys().hasAny(['name', 'phone', 'email', 'address', 'deviceId', 'contactName', 'contactPhone', 'uid', 'userId', 'ip', 'fingerprint']) &&
+        data.responseId is string && data.responseId == responseId && data.responseId.size() > 0 && data.responseId.size() <= 100 &&
+        data.selectedOption is string && data.selectedOption in ['support', 'undecided', 'other'] &&
+        data.createdAt is string && data.createdAt.size() > 0 && data.createdAt.size() <= 100;
+    }
+
+    // Validator: followup_requests creation
+    function isValidFollowupRequestCreate(data, requestId) {
+      return data.keys().hasAll(['requestId', 'relatedFeedbackId', 'consentToContact', 'createdAt']) &&
+        data.keys().hasOnly(['requestId', 'relatedFeedbackId', 'consentToContact', 'contactName', 'contactPhone', 'ward', 'createdAt']) &&
+        data.requestId is string && data.requestId == requestId && data.requestId.size() > 0 && data.requestId.size() <= 100 &&
+        data.relatedFeedbackId is string && data.relatedFeedbackId.size() > 0 && data.relatedFeedbackId.size() <= 100 &&
+        data.consentToContact is bool && data.consentToContact == true &&
+        data.createdAt is string && data.createdAt.size() > 0 && data.createdAt.size() <= 100 &&
+        isOptionalStringValid(data, 'contactName', 0, 100) &&
+        isOptionalStringValid(data, 'contactPhone', 0, 30) &&
+        isOptionalStringValid(data, 'ward', 0, 100);
+    }
+
+    // Validator: followup_requests update (admin only)
+    function isValidFollowupRequestUpdate(data, existingData, requestId) {
+      return data.keys().hasAll(['requestId', 'relatedFeedbackId', 'consentToContact', 'createdAt']) &&
+        data.keys().hasOnly(['requestId', 'relatedFeedbackId', 'consentToContact', 'contactName', 'contactPhone', 'ward', 'createdAt']) &&
+        data.requestId == existingData.requestId &&
+        data.relatedFeedbackId == existingData.relatedFeedbackId &&
+        data.createdAt == existingData.createdAt &&
+        data.consentToContact is bool &&
+        isOptionalStringValid(data, 'contactName', 0, 100) &&
+        isOptionalStringValid(data, 'contactPhone', 0, 30) &&
+        isOptionalStringValid(data, 'ward', 0, 100);
+    }
+
+    // Validator: admin user creation & update
+    function isValidAdminUser(data, adminId) {
+      return data.keys().hasAll(['uid', 'email', 'role', 'createdAt']) &&
+        data.keys().hasOnly(['uid', 'email', 'displayName', 'role', 'createdAt']) &&
+        data.uid is string && data.uid == adminId && data.uid.size() > 0 && data.uid.size() <= 128 &&
+        data.email is string && data.email.size() > 3 && data.email.size() <= 100 && isValidEmail(data.email) &&
+        data.role is string && data.role in ['superadmin', 'admin', 'moderator'] &&
+        data.createdAt is string && data.createdAt.size() > 0 && data.createdAt.size() <= 100 &&
+        isOptionalStringValid(data, 'displayName', 0, 100);
+    }
+
+    // Validator: audit_log creation
+    function isValidAuditLog(data, logId) {
+      return data.keys().hasAll(['logId', 'adminEmail', 'action', 'targetId', 'details', 'timestamp']) &&
+        data.keys().hasOnly(['logId', 'adminEmail', 'action', 'targetId', 'details', 'timestamp']) &&
+        data.logId is string && data.logId == logId && data.logId.size() > 0 && data.logId.size() <= 100 &&
+        data.adminEmail is string && data.adminEmail.size() > 3 && data.adminEmail.size() <= 100 && isValidEmail(data.adminEmail) &&
+        data.action is string && data.action.size() > 0 && data.action.size() <= 100 &&
+        data.targetId is string && data.targetId.size() > 0 && data.targetId.size() <= 100 &&
+        data.details is string && data.details.size() <= 2000 &&
+        data.timestamp is string && data.timestamp.size() > 0 && data.timestamp.size() <= 100;
+    }
+
+    // ===============================================================
+    // Collection Match Rules
+    // ===============================================================
+
+    // 1. Site Content (CMS: bio, priorities, contact info, FAQs, announcements)
+    match /site_content/{contentId} {
+      allow read: if true;
+      allow create: if isAdmin() && isValidSiteContent(request.resource.data);
+      allow update: if isAdmin() && isValidSiteContent(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    // 2. Public Feedback (Grievances, problems, community suggestions)
+    match /public_feedback/{feedbackId} {
+      // Public read allowed ONLY for approved documents; Admins can read all statuses
+      allow read: if isAdmin() || (resource.data.moderationStatus == 'approved');
+
+      // Public create allowed with strict validation of categories, length, and initial status
+      allow create: if isValidPublicFeedbackCreate(request.resource.data, feedbackId);
+
+      // Updates and deletions strictly restricted to verified administrators
+      allow update: if isAdmin() && isValidPublicFeedbackUpdate(request.resource.data, resource.data, feedbackId);
+      allow delete: if isAdmin();
+    }
+
+    // 3. Anonymous Opinions (Confidential voting poll)
+    match /anonymous_opinions/{responseId} {
+      // Public read strictly forbidden (no individual vote browsing); Admins can read for aggregation
+      allow read: if isAdmin();
+
+      // Public write allowed: strictly anonymous, no PII allowed
+      allow create: if isValidAnonymousOpinion(request.resource.data, responseId);
+
+      // Immutable: No edits or deletions allowed
+      allow update, delete: if false;
+    }
+
+    // 4. Follow-up Requests (Voluntary contact details for grievance redressal)
+    match /followup_requests/{requestId} {
+      // Public read strictly forbidden to protect citizen privacy and PII
+      allow read: if isAdmin();
+
+      // Public create allowed with mandatory contact consent
+      allow create: if isValidFollowupRequestCreate(request.resource.data, requestId);
+
+      // Management restricted to verified administrators
+      allow update: if isAdmin() && isValidFollowupRequestUpdate(request.resource.data, resource.data, requestId);
+      allow delete: if isAdmin();
+    }
+
+    // 5. Administrators (RBAC user directory)
+    match /admins/{adminId} {
+      // No public access; accessible only to verified administrators
+      allow read: if isAdmin();
+      allow create: if isAdmin() && isValidAdminUser(request.resource.data, adminId);
+      allow update: if isAdmin() && isValidAdminUser(request.resource.data, adminId) &&
+                    request.resource.data.uid == resource.data.uid &&
+                    request.resource.data.createdAt == resource.data.createdAt;
+      allow delete: if isAdmin();
+    }
+
+    // 6. Audit Logs (Administrative operation history)
+    match /audit_logs/{logId} {
+      // No public access; read and write restricted to verified administrators
+      allow read: if isAdmin();
+      allow create: if isAdmin() && isValidAuditLog(request.resource.data, logId);
+      // Audit logs are tamper-evident and immutable
+      allow update: if false;
+      allow delete: if isAdmin();
+    }
+  }
+}
