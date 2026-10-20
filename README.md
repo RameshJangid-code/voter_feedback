@@ -1,3 +1,4 @@
+
 # श्री मोहन सिंह जी — बुड़ीवाड़ा जन-संवाद एवं समस्या निवारण पोर्टल
 ### Shri Mohan Singh Ji – Budivada Sarpanch Public Feedback Portal
 
@@ -191,3 +192,5 @@ This application is built strictly for community engagement, grievance redressal
 - It does not conduct predictive election polling or claim to represent total voter turnout.
 - Political opinions are never linked to personal identities.
 - All administrative updates are logged in an immutable audit trail.
+=======
+# voter_feedback
