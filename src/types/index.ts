@@ -16,12 +16,34 @@ export type FeedbackStatus = "pending" | "under_review" | "addressed" | "resolve
 
 export type ModerationStatus = "pending" | "approved" | "hidden";
 
-export type OpinionOption = "support" | "undecided" | "other";
+export type OpinionOption = "support" | "undecided" | "other" | "yes" | "no";
 
+export type VoteChoice = "yes" | "no";
+
+export interface AnonymousSurvey {
+  responseId: string;
+  voteChoice: VoteChoice; // "yes" or "no"
+  // If YES:
+  expectations?: string[]; // Array of selected expectation keys
+  biggestExpectation?: string; // Optional custom text for biggest expectation
+  // If NO:
+  noReasonPredefined?: string; // Optional predefined reason
+  noReasonCustom?: string; // Optional custom text for why not voting
+  createdAt: string;
+  isDemo?: boolean; // true if demo/seed data, false or undefined for real submitted records
+}
+
+// Extends AnonymousOpinion for backward compatibility with existing components
 export interface AnonymousOpinion {
   responseId: string;
-  selectedOption: OpinionOption;
+  selectedOption?: OpinionOption;
+  voteChoice?: VoteChoice;
+  expectations?: string[];
+  biggestExpectation?: string;
+  noReasonPredefined?: string;
+  noReasonCustom?: string;
   createdAt: string;
+  isDemo?: boolean;
 }
 
 export interface PublicFeedback {
@@ -37,16 +59,29 @@ export interface PublicFeedback {
   internalNotes?: string;
   createdAt: string;
   isPublic: boolean;
+  isDemo?: boolean;
 }
+
+export type PreferredContactMethod = "phone" | "whatsapp" | "in_person";
 
 export interface FollowupRequest {
   requestId: string;
-  relatedFeedbackId: string;
+  relatedFeedbackId?: string;
+  fullName: string;
+  fatherName?: string;
+  mobileNumber: string;
+  locality?: string;
+  preferredContactMethod?: PreferredContactMethod;
+  subjectOrProblem?: string;
+  consentToContact: boolean;
+  createdAt: string;
+  status?: "new" | "contacted" | "in_progress" | "resolved";
+  adminNotes?: string;
+  isDemo?: boolean;
+  // Aliases for backward compatibility
   contactName?: string;
   contactPhone?: string;
   ward?: string;
-  consentToContact: boolean;
-  createdAt: string;
 }
 
 export interface AdminUser {
@@ -116,6 +151,33 @@ export interface AuditLog {
   timestamp: string;
 }
 
+export interface ExpectationItem {
+  key: string;
+  labelHi: string;
+  labelEn: string;
+  count: number;
+  percent: number;
+}
+
+export interface NoReasonItem {
+  reason: string;
+  count: number;
+  percent: number;
+}
+
+export interface SurveyAggregateStats {
+  totalSurveys: number;
+  realSurveysCount: number;
+  demoSurveysCount: number;
+  yesCount: number;
+  noCount: number;
+  yesPercent: number;
+  noPercent: number;
+  topExpectations: ExpectationItem[];
+  commonNoReasons: NoReasonItem[];
+  dateWiseTrend: { date: string; yes: number; no: number; total: number }[];
+}
+
 export interface AggregateStats {
   totalFeedback: number;
   uniqueRecords: number;
@@ -136,4 +198,44 @@ export interface AggregateStats {
     undecidedPercent: number;
     otherPercent: number;
   };
+  surveyStats: SurveyAggregateStats;
 }
+
+export interface PostVoteDetail {
+  id: string;
+  relatedSurveyId?: string;
+  /** The poll this voter participated in (pollId) */
+  pollId?: string;
+  /** The option they chose (optionId like "opt-yes" or "opt-no") */
+  pollOptionId?: string;
+  /** Human-readable vote choice label in Hindi */
+  voteChoiceLabel?: string;
+  fullName?: string;
+  fatherName?: string;
+  mobileNumber?: string;
+  locality?: string;
+  notes?: string;
+  createdAt: string;
+  isDemo?: boolean;
+}
+
+export interface PollOption {
+  id: string;
+  textHi: string;
+  textEn: string;
+  votesCount?: number;
+}
+
+export interface PollItem {
+  id: string;
+  titleHi: string;
+  titleEn: string;
+  descriptionHi?: string;
+  descriptionEn?: string;
+  options: PollOption[];
+  isActive: boolean;
+  createdAt: string;
+  totalVotes?: number;
+  isDefault?: boolean;
+}
+

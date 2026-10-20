@@ -14,6 +14,7 @@ import {
   Menu,
   X,
   UserCheck,
+  Vote,
 } from "lucide-react";
 
 export function AdminSidebar() {
@@ -30,10 +31,22 @@ export function AdminSidebar() {
       icon: <LayoutDashboard className="w-5 h-5" />,
     },
     {
+      href: "/admin/polls",
+      labelHi: "पोल व मत समीक्षा",
+      labelEn: "Polls & Votes Overview",
+      icon: <Vote className="w-5 h-5" />,
+    },
+    {
       href: "/admin/feedback",
       labelHi: "समस्या व सुझाव प्रबंधन",
       labelEn: "Feedback Management",
       icon: <MessageSquareCheck className="w-5 h-5" />,
+    },
+    {
+      href: "/admin/contacts",
+      labelHi: "स्वैच्छिक संपर्क अनुरोध",
+      labelEn: "Contact Requests",
+      icon: <UserCheck className="w-5 h-5" />,
     },
     {
       href: "/admin/analytics",
@@ -48,6 +61,7 @@ export function AdminSidebar() {
       icon: <FileEdit className="w-5 h-5" />,
     },
   ];
+
 
   const handleLogout = async () => {
     await logout();
@@ -103,7 +117,15 @@ export function AdminSidebar() {
                 <span className="text-slate-200 font-mono truncate">{user?.email || "अधिकृत एडमिन"}</span>
               </div>
             </div>
+            <div className="mt-2 px-2.5 py-1 rounded-lg bg-emerald-950/50 border border-emerald-800/40 flex items-center justify-between text-[11px]">
+              <span className="flex items-center gap-1.5 text-emerald-400 font-medium">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                <span>डेटा स्टोर: MongoDB</span>
+              </span>
+              <span className="text-[10px] text-emerald-300 font-mono font-semibold">सक्रिय (Active)</span>
+            </div>
           </div>
+
 
           {/* Navigation */}
           <nav className="p-4 space-y-1.5">

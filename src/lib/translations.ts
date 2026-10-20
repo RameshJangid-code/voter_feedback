@@ -11,6 +11,7 @@ export interface Translations {
   navFeedback: string;
   navIssues: string;
   navOpinion: string;
+  navContact: string;
   navPrivacy: string;
   navAdmin: string;
   navLanguageToggle: string;
@@ -19,12 +20,15 @@ export interface Translations {
   heroBadge: string;
   heroHeadline: string;
   heroSubheadline: string;
+  btnGiveOpinion: string;
   btnReportProblem: string;
+  btnContactTeam: string;
   btnShareExpectations: string;
   btnOpinionPoll: string;
   statFeedbackCount: string;
   statAddressedCount: string;
   statActiveCitizens: string;
+  publicSurveyCountText: (count: number) => string;
 
   // Introduction Section
   introTitle: string;
@@ -84,7 +88,44 @@ export interface Translations {
   feedbackSuccessMsg: string;
   btnSubmitAnother: string;
 
-  // Opinion Poll
+  // Simplified Survey Flow
+  surveyTitle: string;
+  surveySubtitle: string;
+  surveyQ1: string;
+  surveyVoteYes: string;
+  surveyVoteNo: string;
+  surveyYesQ2: string;
+  surveyBiggestExpectationLabel: string;
+  surveyBiggestExpectationPlaceholder: string;
+  surveyNoQ2: string;
+  surveyNoReasonPlaceholder: string;
+  btnBack: string;
+  btnContinue: string;
+  btnSkip: string;
+  btnSubmitSurvey: string;
+  surveySubmittedTitle: string;
+  surveySubmittedMsg: string;
+  surveyPrivacyNote: string;
+
+  // Contact Form (Separate)
+  contactFormTitle: string;
+  contactFormSubtitle: string;
+  labelFullName: string;
+  labelFatherName: string;
+  labelMobileNumber: string;
+  labelLocality: string;
+  labelPreferredContactMethod: string;
+  methodPhone: string;
+  methodWhatsapp: string;
+  methodInPerson: string;
+  labelSubjectOrProblem: string;
+  labelContactConsent: string;
+  btnSubmitContact: string;
+  contactSuccessTitle: string;
+  contactSuccessMsg: string;
+  contactFormDisclaimer: string;
+
+  // Opinion Poll (Legacy/compat)
   opinionTitle: string;
   opinionSubtitle: string;
   opinionQuestion: string;
@@ -122,12 +163,13 @@ export const translations: Record<Language, Translations> = {
     siteTitle: "बुड़ीवाड़ा जन-संवाद पोर्टल",
     candidateName: "श्री मोहन सिंह जी",
     villageName: "ग्राम पंचायत बुड़ीवाड़ा",
-    candidateCategory: "निर्दलीय सरपंच प्रत्याशी",
+    candidateCategory: "निर्दलीय (Independent) सरपंच प्रत्याशी",
     navHome: "मुख्य पृष्ठ",
     navAbout: "प्रत्याशी परिचय",
-    navFeedback: "समस्या व सुझाव दर्ज करें",
+    navFeedback: "गाँव की समस्याएँ बताएं",
     navIssues: "गाँव की प्राथमिकताएँ",
-    navOpinion: "जनमत (राय-शुमारी)",
+    navOpinion: "अपनी राय दें",
+    navContact: "संपर्क अनुरोध",
     navPrivacy: "गोपनीयता नीति",
     navAdmin: "प्रशासन लॉगिन",
     navLanguageToggle: "English",
@@ -135,25 +177,29 @@ export const translations: Record<Language, Translations> = {
     // Hero Section
     heroBadge: "निर्दलीय सरपंच प्रत्याशी • बुड़ीवाड़ा",
     heroHeadline: "गाँव की आवाज, गाँव का विकास",
-    heroSubheadline: "श्री मोहन सिंह जी की पहल — बुड़ीवाड़ा के प्रत्येक नागरिक की समस्या, सुझाव और अपेक्षा को सुनना और निष्पक्ष विकास की प्राथमिकता तय करना।",
+    heroSubheadline: "श्री मोहन सिंह जी की निष्पक्ष पहल — बुड़ीवाड़ा के प्रत्येक नागरिक की समस्या, सुझाव और अपेक्षा को सुनना और गाँव की प्राथमिकताओं के आधार पर कार्य करना।",
+    btnGiveOpinion: "अपनी राय दें",
     btnReportProblem: "गाँव की समस्याएँ बताएं",
+    btnContactTeam: "समस्या समाधान हेतु संपर्क करें",
     btnShareExpectations: "अपनी अपेक्षाएँ साझा करें",
     btnOpinionPoll: "अपनी राय दर्ज करें",
     statFeedbackCount: "कुल प्राप्त समस्याएँ",
     statAddressedCount: "समीक्षित व दर्ज मुद्दे",
     statActiveCitizens: "सक्रिय ग्रामवासी सहभागिता",
+    publicSurveyCountText: (count: number) =>
+      `अब तक ${count} लोगों ने सर्वे में अपनी राय साझा की है।`,
 
     // Introduction Section
-    introTitle: "हमारा उद्देश्य एवं परिचय",
-    introSubtitle: "स्वच्छ, पारदर्शी और जन-भागीदारी आधारित ग्राम पंचायत निर्माण",
-    introDescription: "श्री मोहन सिंह जी, बुड़ीवाड़ा ग्राम पंचायत से निर्दलीय सरपंच प्रत्याशी हैं। हमारा मानना है कि सरपंच का काम वादों की झड़ी लगाना नहीं, बल्कि गाँव के प्रत्येक मोहल्ले और वार्ड की वास्तविक समस्याओं को समझकर प्राथमिकताओं के आधार पर कार्य करना है।",
+    introTitle: "श्री मोहन सिंह जी का परिचय एवं दृष्टिकोण",
+    introSubtitle: "स्वच्छ, पारदर्शी और जन-भागीदारी आधारित बुड़ीवाड़ा का निर्माण",
+    introDescription: "श्री मोहन सिंह जी, बुड़ीवाड़ा ग्राम पंचायत से निर्दलीय सरपंच प्रत्याशी हैं। हमारा दृढ़ विश्वास है कि सरपंच का कार्य केवल वादे करना नहीं, बल्कि हर मोहल्ले और ढाणी की वास्तविक समस्याओं को समझकर गाँव के विकास की प्राथमिकताएं तय करना है।",
     introPledgeTitle: "हमारा संकल्प",
     introPledgeDesc: "जनता की राय से तैयार कार्ययोजना, पेयजल-सड़क-स्वास्थ्य की प्राथमिकता और हर वर्ग के लिए पारदर्शी सेवा।",
     readMore: "विस्तार से जानें",
 
     // Primary Issues Section
     primaryIssuesTitle: "हमारे गाँव की प्राथमिक समस्याएँ",
-    primaryIssuesSubtitle: "ग्रामवासियों द्वारा अब तक दर्ज की गई प्रमुख बुनियादी आवश्यकताएँ",
+    primaryIssuesSubtitle: "ग्रामवासियों द्वारा दर्ज की गई प्रमुख बुनियादी आवश्यकताएँ",
     viewAllIssues: "समस्त प्राथमिकताएं व विश्लेषण देखें",
 
     // Statistics Section
@@ -179,11 +225,11 @@ export const translations: Record<Language, Translations> = {
     priorityHigh: "अति आवश्यक (High Priority)",
 
     // Feedback Form
-    feedbackFormTitle: "अगर गाँव की समस्याएँ हल हों, तो हमारी प्राथमिकताएँ क्या होंगी?",
+    feedbackFormTitle: "गाँव की समस्या या रचनात्मक सुझाव दर्ज करें",
     feedbackFormSubtitle: "अपनी समस्या या सुझाव निःसंकोच दर्ज करें। यह विवरण गाँव की विकास कार्ययोजना में सम्मिलित किया जाएगा।",
     labelCategory: "मुख्य समस्या का विषय चुनें *",
     labelDescription: "समस्या का विस्तारपूर्वक विवरण दें *",
-    placeholderDescription: "कृपया समस्या का स्थान (मोहल्ला/गली) और क्या कठिनाई आ रही है, स्पष्ट लिखें (अधिकतम 1000 शब्द)...",
+    placeholderDescription: "कृपया समस्या का स्थान (मोहल्ला/गली) और क्या कठिनाई आ रही है, स्पष्ट लिखें...",
     labelImprovement: "आप इसमें क्या सुधार या समाधान देखना चाहते हैं? *",
     placeholderImprovement: "आपके अनुसार इस समस्या का सही समाधान क्या हो सकता है?",
     labelPriority: "यह समस्या कितनी जरूरी / गंभीर है? *",
@@ -198,10 +244,47 @@ export const translations: Record<Language, Translations> = {
     btnSubmitFeedback: "समस्या / सुझाव सबमिट करें",
     submittingText: "दर्ज किया जा रहा है...",
     feedbackSuccessTitle: "सफलतापूर्वक दर्ज किया गया!",
-    feedbackSuccessMsg: "आपकी समस्या और सुझाव साझा करने के लिए धन्यवाद। आपके सुझाव गाँव की विकास संबंधी प्राथमिकताओं को समझने में मदद करेंगे।",
+    feedbackSuccessMsg: "आपकी समस्या और सुझाव साझा करने के लिए धन्यवाद। आपके सुझाव गाँव की विकास प्राथमिकताओं को निर्धारित करने में मदद करेंगे।",
     btnSubmitAnother: "एक और समस्या दर्ज करें",
 
-    // Opinion Poll
+    // Simplified Survey Flow
+    surveyTitle: "बुड़ीवाड़ा ग्राम पंचायत जनमत सर्वे 2026",
+    surveySubtitle: "स्वैच्छिक एवं 100% गोपनीय • आपकी राय हमारे गाँव के विकास की दिशा तय करेगी",
+    surveyQ1: "क्या आप आगामी सरपंच चुनाव में श्री मोहन सिंह जी को वोट देने पर विचार कर रहे हैं?",
+    surveyVoteYes: "हाँ (YES)",
+    surveyVoteNo: "नहीं (NO)",
+    surveyYesQ2: "अगर श्री मोहन सिंह जी सरपंच बनते हैं, तो आप उनसे क्या अपेक्षा रखते हैं?",
+    surveyBiggestExpectationLabel: "आपकी सबसे बड़ी अपेक्षा क्या है? (वैकल्पिक)",
+    surveyBiggestExpectationPlaceholder: "गाँव के लिए आपकी सबसे मुख्य अपेक्षा या प्राथमिकता यहाँ लिखें...",
+    surveyNoQ2: "आप वोट क्यों नहीं देना चाहते? (कारण देना वैकल्पिक है)",
+    surveyNoReasonPlaceholder: "यदि आप कोई सुझाव या कारण साझा करना चाहें (वैकल्पिक)...",
+    btnBack: "वापस जाएँ",
+    btnContinue: "आगे बढ़ें",
+    btnSkip: "छोड़ें और सबमिट करें",
+    btnSubmitSurvey: "सर्वे सबमिट करें",
+    surveySubmittedTitle: "धन्यवाद! आपकी राय सफलतापूर्वक दर्ज कर ली गई है।",
+    surveySubmittedMsg: "आपकी प्रतिक्रिया सुरक्षित रूप से संकलित आंकड़ों में जोड़ दी गई है।",
+    surveyPrivacyNote: "पूर्ण गोपनीयता गारंटी: यह सर्वे पूर्णतः अनाम है। कोई नाम, फोन नंबर या व्यक्तिगत पहचान दर्ज नहीं की जाती।",
+
+    // Contact Form (Separate)
+    contactFormTitle: "ग्राम विकास एवं संवाद संपर्क फॉर्म",
+    contactFormSubtitle: "यदि आप गाँव की समस्याओं, सुझावों या स्थल निरीक्षण के संबंध में श्री मोहन सिंह जी की टीम से संपर्क चाहते हैं, तो कृपया नीचे अपना विवरण दर्ज करें।",
+    labelFullName: "पूरा नाम *",
+    labelFatherName: "पिता का नाम (वैकल्पिक)",
+    labelMobileNumber: "मोबाइल नंबर *",
+    labelLocality: "गाँव / ढाणी / मोहल्ला / वार्ड (वैकल्पिक)",
+    labelPreferredContactMethod: "संपर्क का पसंदीदा माध्यम",
+    methodPhone: "फ़ोन कॉल (Phone Call)",
+    methodWhatsapp: "व्हाट्सएप (WhatsApp)",
+    methodInPerson: "व्यक्तिगत भेंट (In-Person)",
+    labelSubjectOrProblem: "संक्षेप में विषय या समस्या (वैकल्पिक)",
+    labelContactConsent: "हाँ, मैं गाँव की समस्याओं या सुझावों के समाधान हेतु श्री मोहन सिंह जी की टीम द्वारा संपर्क किए जाने की सहमति देता/देती हूँ।",
+    btnSubmitContact: "संपर्क अनुरोध सबमिट करें",
+    contactSuccessTitle: "अनुरोध सफलतापूर्वक दर्ज!",
+    contactSuccessMsg: "आपका संपर्क विवरण प्राप्त हो गया है। हमारी टीम जल्द ही आपसे संपर्क करेगी।",
+    contactFormDisclaimer: "गोपनीयता सूचना: यह संपर्क फॉर्म सर्वे से पूर्णतः अलग है। यहाँ दर्ज जानकारी केवल व्यक्तिगत संवाद हेतु उपयोग होगी, इसे कभी भी किसी राजनीतिक राय या हाँ/नहीं उत्तर से नहीं जोड़ा जाएगा।",
+
+    // Opinion Poll (Legacy/compat)
     opinionTitle: "ग्रामवासी स्वैच्छिक राय-शुमारी",
     opinionSubtitle: "पूर्णतः गोपनीय • बिना किसी पहचान के अपनी राय दें",
     opinionQuestion: "आपकी वर्तमान राय क्या है?",
@@ -210,7 +293,7 @@ export const translations: Record<Language, Translations> = {
     opinionOptOther: "मैं अन्य विकल्प पर विचार कर रहा/रही हूँ।",
     btnSubmitOpinion: "अपनी राय गोपनीय रूप से दर्ज करें",
     opinionSubmittedMsg: "आपकी राय सफलतापूर्वक दर्ज कर ली गई है। धन्यवाद!",
-    opinionDisclaimer: "महत्वपूर्ण सूचना: यह स्वैच्छिक राय-शुमारी है। यहाँ कोई नाम, नंबर या व्यक्तिगत डेटा एकत्रित नहीं किया जाता। यह प्रतिक्रिया प्रत्येक ग्रामवासी के मत का प्रतिनिधित्व नहीं करती और न ही चुनावी परिणाम की भविष्यवाणी करती है।",
+    opinionDisclaimer: "महत्वपूर्ण सूचना: यह स्वैच्छिक राय-शुमारी है। यहाँ कोई नाम, नंबर या व्यक्तिगत डेटा एकत्रित नहीं किया जाता। यह किसी नागरिक की व्यक्तिगत पहचान प्रदर्शित नहीं करता।",
     opinionLiveResultsTitle: "संकलित जनमत रुझान (अनाम आंकड़े)",
     opinionTotalVotes: "कुल प्राप्त गोपनीय राय",
 
@@ -222,10 +305,10 @@ export const translations: Record<Language, Translations> = {
     noSuggestionsFound: "इस श्रेणी में अभी कोई सुझाव उपलब्ध नहीं है।",
 
     // Footer & Contact
-    footerTitle: "श्री मोहन सिंह जी – स्वतंत्र सरपंच प्रत्याशी",
+    footerTitle: "श्री मोहन सिंह जी – निर्दलीय सरपंच प्रत्याशी",
     footerAboutText: "ग्राम पंचायत बुड़ीवाड़ा के समग्र, पारदर्शी और निष्पक्ष विकास के लिए समर्पित। गाँव का हर नागरिक हमारा सम्मानित मार्गदर्शक है।",
     quickLinks: "त्वरित लिंक्स",
-    contactTitle: "संपर्क एवं जन-सुनवाई",
+    contactTitle: "कार्यालय एवं जन-सुनवाई",
     officeAddress: "कार्यालय: मुख्य बस स्टैंड, ग्राम पंचायत बुड़ीवाड़ा",
     visitingHours: "जन-सुनवाई समय: प्रतिदिन प्रातः 8:00 से 11:00 बजे एवं सायं 5:00 से 8:00 बजे",
     helplinePhone: "हेल्पलाइन / संपर्क: +91 98290 XXXXX",
@@ -240,111 +323,153 @@ export const translations: Record<Language, Translations> = {
     candidateCategory: "Independent Sarpanch Candidate",
     navHome: "Home",
     navAbout: "About Candidate",
-    navFeedback: "Submit Grievance / Suggestion",
+    navFeedback: "Report Village Issues",
     navIssues: "Village Priorities",
-    navOpinion: "Opinion Poll",
+    navOpinion: "Give Your Opinion",
+    navContact: "Request Contact",
     navPrivacy: "Privacy Policy",
     navAdmin: "Admin Login",
-    navLanguageToggle: "हिन्दी",
+    navLanguageToggle: "हिंदी",
 
     // Hero Section
     heroBadge: "Independent Sarpanch Candidate • Budivada",
-    heroHeadline: "Voice of the Village, Progress of the Village",
-    heroSubheadline: "An initiative by Shri Mohan Singh Ji — Listening to every resident's grievance, expectation, and suggestion to establish fair community priorities.",
-    btnReportProblem: "Report Village Problems",
-    btnShareExpectations: "Share Your Expectations",
+    heroHeadline: "Voice of the Village, Development of the Village",
+    heroSubheadline: "An initiative by Shri Mohan Singh Ji — listening to every resident's problems, suggestions, and expectations to set unbiased development priorities.",
+    btnGiveOpinion: "Give Your Opinion",
+    btnReportProblem: "Report Village Issues",
+    btnContactTeam: "Contact for Grievance Redressal",
+    btnShareExpectations: "Share Expectations",
     btnOpinionPoll: "Cast Your Opinion",
-    statFeedbackCount: "Total Problems Logged",
-    statAddressedCount: "Issues Reviewed & Registered",
-    statActiveCitizens: "Active Citizen Participants",
+    statFeedbackCount: "Total Issues Reported",
+    statAddressedCount: "Addressed & Recorded",
+    statActiveCitizens: "Active Citizen Participation",
+    publicSurveyCountText: (count: number) =>
+      `So far ${count} residents have shared their views in the survey.`,
 
     // Introduction Section
-    introTitle: "Our Purpose & Overview",
-    introSubtitle: "Building a Clean, Transparent, and Participatory Panchayat",
-    introDescription: "Shri Mohan Singh Ji is an Independent Sarpanch Candidate for Gram Panchayat Budivada. We believe the role of a Sarpanch is not to make false promises, but to listen closely to ground problems across every mohalla and ward, prioritizing development based on real resident input.",
+    introTitle: "Introduction & Vision of Shri Mohan Singh Ji",
+    introSubtitle: "Building a Clean, Transparent & Participatory Budivada",
+    introDescription: "Shri Mohan Singh Ji is an Independent Sarpanch Candidate from Gram Panchayat Budivada. We believe the true duty of a Sarpanch is not to make false promises, but to listen closely to every ward and dhanis to prioritize village needs.",
     introPledgeTitle: "Our Pledge",
-    introPledgeDesc: "A village action plan driven by citizen consensus, prioritizing clean drinking water, road connectivity, healthcare, and transparent service.",
-    readMore: "Read More Details",
+    introPledgeDesc: "A development roadmap crafted by citizen feedback, prioritizing drinking water, roads, health, and transparent governance.",
+    readMore: "Read More",
 
     // Primary Issues Section
-    primaryIssuesTitle: "Our Village's Primary Concerns",
-    primaryIssuesSubtitle: "Core fundamental requirements reported by residents so far",
-    viewAllIssues: "View All Priorities & Analytics",
+    primaryIssuesTitle: "Primary Needs of Our Village",
+    primaryIssuesSubtitle: "Key civic infrastructure needs highlighted by village residents",
+    viewAllIssues: "View All Priorities & Charts",
 
     // Statistics Section
-    statsTitle: "Transparent Community Metrics",
-    statsSubtitle: "Anonymized and aggregated citizen feedback insights",
-    statsDisclaimer: "All statistics are fully anonymized and never display any resident's personal identity.",
+    statsTitle: "Transparent Community Statistics",
+    statsSubtitle: "Confidential and aggregated resident feedback analytics",
+    statsDisclaimer: "These figures are strictly aggregated and do not reveal any personal identities.",
 
     // Categories
-    catWater: "Drinking Water Supply",
+    catWater: "Drinking Water",
     catRoads: "Roads & Street Repairs",
     catDrainage: "Drainage & Sanitation",
-    catStreetlights: "Street Lighting",
-    catEducation: "Education & School Facilities",
+    catStreetlights: "Streetlights & Lighting",
+    catEducation: "Education & Schools",
     catHealth: "Healthcare & Dispensaries",
     catEmployment: "Employment & Livelihood",
-    catGovSchemes: "Government Welfare Schemes",
-    catCleanliness: "Waste Management & Cleanliness",
+    catGovSchemes: "Government Schemes",
+    catCleanliness: "Cleanliness & Waste Management",
     catOther: "Other Issues",
 
     // Priorities
     priorityLow: "Low Priority",
     priorityMedium: "Medium Priority",
-    priorityHigh: "High Priority (Urgent)",
+    priorityHigh: "High Priority",
 
     // Feedback Form
-    feedbackFormTitle: "If Village Problems Are Solved, What Should Be Our Priorities?",
-    feedbackFormSubtitle: "Submit your problem or constructive suggestion freely. This directly shapes our community action plan.",
+    feedbackFormTitle: "Report a Village Problem or Creative Suggestion",
+    feedbackFormSubtitle: "Submit your problem or constructive suggestion freely. It will be incorporated into the village development roadmap.",
     labelCategory: "Select Main Problem Category *",
-    labelDescription: "Describe your problem in detail *",
-    placeholderDescription: "Please mention the location (mohalla/ward) and explain the issue clearly (up to 1000 characters)...",
-    labelImprovement: "What improvement or solution would you like to see? *",
-    placeholderImprovement: "What in your opinion is the most effective solution?",
-    labelPriority: "How urgent is this problem? *",
-    labelDevelopmentSuggestion: "Optional suggestion for the village master plan",
-    placeholderDevelopmentSuggestion: "Share any visionary ideas for the overall development of Budivada...",
-    labelConsentSectionTitle: "Voluntary Follow-up Contact (Strictly Optional)",
-    labelConsentSectionDesc: "If you wish for the candidate's team to contact you for a site visit or clarification, provide your details below. This is strictly voluntary, kept confidential, and never combined with political opinions.",
-    labelConsentCheckbox: "Yes, I explicitly consent to sharing contact details for site verification or status updates.",
-    labelContactName: "Your Name (Optional)",
-    labelContactPhone: "Phone Number (Optional)",
-    labelWard: "Ward / Mohalla (Optional)",
-    btnSubmitFeedback: "Submit Grievance / Suggestion",
+    labelDescription: "Detailed Description of the Issue *",
+    placeholderDescription: "Please specify the location (locality/street) and what difficulty is being faced...",
+    labelImprovement: "What Improvement or Solution Do You Expect? *",
+    placeholderImprovement: "In your opinion, what is the best solution for this issue?",
+    labelPriority: "Urgency Level of this Problem *",
+    labelDevelopmentSuggestion: "Additional Village Development Suggestions (Optional)",
+    placeholderDevelopmentSuggestion: "Share any visionary ideas for the village...",
+    labelConsentSectionTitle: "Voluntary Contact Details (Strictly Optional)",
+    labelConsentSectionDesc: "Only fill in details below if you wish the candidate's team to contact you for site inspection or grievance follow-up. This is strictly segregated from political opinions.",
+    labelConsentCheckbox: "Yes, I consent to sharing my contact details for site inspection or progress updates.",
+    labelContactName: "Your Full Name (Optional)",
+    labelContactPhone: "Mobile Number (Optional)",
+    labelWard: "Ward Number / Locality (Optional)",
+    btnSubmitFeedback: "Submit Problem / Suggestion",
     submittingText: "Submitting...",
-    feedbackSuccessTitle: "Submitted Successfully!",
-    feedbackSuccessMsg: "Thank you for sharing your problem and suggestions. Your input will help us understand and prioritize development needs for Budivada.",
+    feedbackSuccessTitle: "Successfully Submitted!",
+    feedbackSuccessMsg: "Thank you for sharing your feedback. Your input helps us understand our village priorities.",
     btnSubmitAnother: "Submit Another Issue",
 
-    // Opinion Poll
-    opinionTitle: "Resident Voluntary Opinion Poll",
-    opinionSubtitle: "100% Anonymous • Express your view without any tracking",
-    opinionQuestion: "What is your current opinion?",
+    // Simplified Survey Flow
+    surveyTitle: "Budivada Gram Panchayat Survey 2026",
+    surveySubtitle: "Voluntary & 100% Confidential • Your voice shapes our village development roadmap",
+    surveyQ1: "Are you considering voting for Shri Mohan Singh Ji in the upcoming Sarpanch election?",
+    surveyVoteYes: "YES — हाँ",
+    surveyVoteNo: "NO — नहीं",
+    surveyYesQ2: "If Shri Mohan Singh Ji becomes Sarpanch, what are your key expectations from him?",
+    surveyBiggestExpectationLabel: "What is your single biggest expectation? (Optional)",
+    surveyBiggestExpectationPlaceholder: "Write your highest priority for the village here...",
+    surveyNoQ2: "Why do you not wish to vote? (Reason is completely optional)",
+    surveyNoReasonPlaceholder: "If you wish to share a reason or suggestion (optional)...",
+    btnBack: "Back",
+    btnContinue: "Continue",
+    btnSkip: "Skip & Submit",
+    btnSubmitSurvey: "Submit Survey",
+    surveySubmittedTitle: "Thank You! Your feedback has been recorded.",
+    surveySubmittedMsg: "Your response has been safely added to the aggregated community metrics.",
+    surveyPrivacyNote: "Strict Privacy Guarantee: This survey is 100% anonymous. No name, phone number, or personal identity is recorded.",
+
+    // Contact Form (Separate)
+    contactFormTitle: "Village Development & Dialogue Contact Form",
+    contactFormSubtitle: "If you want Shri Mohan Singh Ji's team to contact you regarding village issues, suggestions, or site visits, please submit your details below.",
+    labelFullName: "Full Name *",
+    labelFatherName: "Father's Name (Optional)",
+    labelMobileNumber: "Mobile Number *",
+    labelLocality: "Village / Locality / Ward (Optional)",
+    labelPreferredContactMethod: "Preferred Contact Method",
+    methodPhone: "Phone Call",
+    methodWhatsapp: "WhatsApp",
+    methodInPerson: "In-Person Visit",
+    labelSubjectOrProblem: "Brief Subject or Village Problem (Optional)",
+    labelContactConsent: "Yes, I consent to being contacted by Shri Mohan Singh Ji's team regarding village problems or suggestions.",
+    btnSubmitContact: "Submit Contact Request",
+    contactSuccessTitle: "Request Submitted Successfully!",
+    contactSuccessMsg: "Your contact details have been received. Our team will contact you shortly.",
+    contactFormDisclaimer: "Privacy Notice: This contact form is completely separate from the survey. Your details will only be used for dialogue and will never be linked to any political opinion or YES/NO vote.",
+
+    // Opinion Poll (Legacy/compat)
+    opinionTitle: "Citizen Voluntary Opinion Survey",
+    opinionSubtitle: "100% Confidential • Express your opinion anonymously",
+    opinionQuestion: "What is your current view?",
     opinionOptSupport: "I support Shri Mohan Singh Ji.",
-    opinionOptUndecided: "I have not made a decision yet.",
+    opinionOptUndecided: "I am currently undecided.",
     opinionOptOther: "I am considering other options.",
-    btnSubmitOpinion: "Submit Opinion Anonymously",
-    opinionSubmittedMsg: "Your opinion has been recorded anonymously. Thank you!",
-    opinionDisclaimer: "Notice: This voluntary opinion poll is completely anonymous. No names, phone numbers, or identifiers are collected. This does not represent the view of every resident or predict election results.",
-    opinionLiveResultsTitle: "Aggregated Public Sentiment (Anonymous)",
-    opinionTotalVotes: "Total Anonymous Responses",
+    btnSubmitOpinion: "Submit Confidential Opinion",
+    opinionSubmittedMsg: "Your opinion has been recorded safely. Thank you!",
+    opinionDisclaimer: "Important Notice: This is a voluntary citizen survey. No personal identifiable information is collected. It does not represent every citizen's ballot nor forecast official election outcomes.",
+    opinionLiveResultsTitle: "Aggregated Community Trends (Anonymous)",
+    opinionTotalVotes: "Total Confidential Responses",
 
     // Public Issues Page
-    issuesTitle: "Village Problems & Development Priorities",
-    issuesSubtitle: "Transparent aggregated trends and community priorities gathered from residents",
+    issuesTitle: "Village Issues & Development Priorities",
+    issuesSubtitle: "Transparent summary of citizen grievances and development needs",
     filterAll: "All Categories",
-    recentSuggestionsTitle: "Recent Constructive Suggestions (Moderated)",
-    noSuggestionsFound: "No suggestions found in this category yet.",
+    recentSuggestionsTitle: "Recent Constructive Suggestions from Residents",
+    noSuggestionsFound: "No suggestions found in this category.",
 
     // Footer & Contact
     footerTitle: "Shri Mohan Singh Ji – Independent Sarpanch Candidate",
-    footerAboutText: "Dedicated to transparent, fair, and holistic development of Gram Panchayat Budivada. Every citizen is our valued guide.",
-    quickLinks: "Quick Navigation",
-    contactTitle: "Contact & Community Sessions",
+    footerAboutText: "Dedicated to transparent, inclusive, and unbiased development of Gram Panchayat Budivada. Every citizen is our esteemed mentor.",
+    quickLinks: "Quick Links",
+    contactTitle: "Office & Citizen Hours",
     officeAddress: "Office: Main Bus Stand, Gram Panchayat Budivada",
-    visitingHours: "Citizen Hours: Daily 8:00 AM – 11:00 AM & 5:00 PM – 8:00 PM",
-    helplinePhone: "Helpline: +91 98290 XXXXX",
-    privacyNoticeSummary: "All data submitted here is securely maintained. Political opinions are strictly segregated from contact inquiries.",
+    visitingHours: "Citizen Hours: Daily 8:00 AM - 11:00 AM & 5:00 PM - 8:00 PM",
+    helplinePhone: "Helpline / Contact: +91 98290 XXXXX",
+    privacyNoticeSummary: "Entries on this portal are protected. Political views are strictly segregated from personal contact details.",
     copyrightText: "© 2026 Gram Panchayat Budivada Jan-Samvad Portal | All Rights Reserved.",
   },
 };

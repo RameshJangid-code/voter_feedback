@@ -46,7 +46,13 @@ service cloud.firestore {
     // Document ID: responseId (e.g., 'op-...')
     // Fields:
     //   - responseId: string (required, matches path, 1-100 chars)
-    //   - selectedOption: string (required, enum: support, undecided, other)
+    //   - voteChoice: string (optional, enum: yes, no; at least one of voteChoice/selectedOption required)
+    //   - selectedOption: string (optional, enum: support, undecided, other; at least one required)
+    //   - expectations: list of strings (optional, max 15 items)
+    //   - biggestExpectation: string (optional, 0-1000 chars)
+    //   - noReasonPredefined: string (optional, 0-300 chars)
+    //   - noReasonCustom: string (optional, 0-1000 chars)
+    //   - isDemo: bool (optional)
     //   - createdAt: string (required, 1-100 chars)
     //   - Strictly NO PII fields allowed.
     //
@@ -54,11 +60,20 @@ service cloud.firestore {
     // Document ID: requestId (e.g., 'req-...')
     // Fields:
     //   - requestId: string (required, immutable, matches path, 1-100 chars)
-    //   - relatedFeedbackId: string (required, immutable, 1-100 chars)
-    //   - consentToContact: bool (required, must be true)
+    //   - relatedFeedbackId: string (optional, immutable, 0-100 chars)
+    //   - consentToContact: bool (required, must be true on create)
+    //   - fullName: string (optional, 0-100 chars)
     //   - contactName: string (optional, 0-100 chars)
+    //   - fatherName: string (optional, 0-100 chars)
+    //   - mobileNumber: string (optional, 0-30 chars)
     //   - contactPhone: string (optional, 0-30 chars)
+    //   - locality: string (optional, 0-100 chars)
     //   - ward: string (optional, 0-100 chars)
+    //   - preferredContactMethod: string (optional, enum: phone, whatsapp, in_person)
+    //   - subjectOrProblem: string (optional, 0-1500 chars)
+    //   - status: string (optional, enum: new, contacted, in_progress, resolved)
+    //   - adminNotes: string (optional, 0-2000 chars)
+    //   - isDemo: bool (optional)
     //   - createdAt: string (required, immutable, 1-100 chars)
     //
     // Collection: admins
@@ -139,6 +154,15 @@ service cloud.firestore {
 
     function isValidFeedbackStatus(status) {
       return status in ['pending', 'under_review', 'addressed', 'resolved'];
+    }
+
+    // Followup enum validators
+    function isValidPreferredContactMethod(method) {
+      return method in ['phone', 'whatsapp', 'in_person'];
+    }
+
+    function isValidFollowupStatus(status) {
+      return status in ['new', 'contacted', 'in_progress', 'resolved'];
     }
 
     // Contact map validator for site_content
@@ -237,38 +261,84 @@ service cloud.firestore {
 
     // Validator: anonymous_opinions creation
     function isValidAnonymousOpinion(data, responseId) {
-      return data.keys().hasAll(['responseId', 'selectedOption', 'createdAt']) &&
-        data.keys().hasOnly(['responseId', 'selectedOption', 'createdAt']) &&
-        !data.keys().hasAny(['name', 'phone', 'email', 'address', 'deviceId', 'contactName', 'contactPhone', 'uid', 'userId', 'ip', 'fingerprint']) &&
+      return data.keys().hasAll(['responseId', 'createdAt']) &&
+        data.keys().hasOnly([
+          'responseId', 'createdAt', 'voteChoice', 'selectedOption',
+          'expectations', 'biggestExpectation', 'noReasonPredefined',
+          'noReasonCustom', 'isDemo'
+        ]) &&
+        !data.keys().hasAny([
+          'name', 'phone', 'email', 'address', 'deviceId',
+          'contactName', 'contactPhone', 'fullName', 'fatherName',
+          'mobileNumber', 'uid', 'userId', 'ip', 'fingerprint'
+        ]) &&
         data.responseId is string && data.responseId == responseId && data.responseId.size() > 0 && data.responseId.size() <= 100 &&
-        data.selectedOption is string && data.selectedOption in ['support', 'undecided', 'other'] &&
-        data.createdAt is string && data.createdAt.size() > 0 && data.createdAt.size() <= 100;
+        data.createdAt is string && data.createdAt.size() > 0 && data.createdAt.size() <= 100 &&
+        (('voteChoice' in data) || ('selectedOption' in data)) &&
+        (!('voteChoice' in data) || (data.voteChoice is string && data.voteChoice in ['yes', 'no'])) &&
+        (!('selectedOption' in data) || (data.selectedOption is string && data.selectedOption in ['support', 'undecided', 'other'])) &&
+        (!('expectations' in data) || (data.expectations is list && data.expectations.size() <= 15)) &&
+        isOptionalStringValid(data, 'biggestExpectation', 0, 1000) &&
+        isOptionalStringValid(data, 'noReasonPredefined', 0, 300) &&
+        isOptionalStringValid(data, 'noReasonCustom', 0, 1000) &&
+        isOptionalBoolValid(data, 'isDemo');
     }
 
     // Validator: followup_requests creation
     function isValidFollowupRequestCreate(data, requestId) {
-      return data.keys().hasAll(['requestId', 'relatedFeedbackId', 'consentToContact', 'createdAt']) &&
-        data.keys().hasOnly(['requestId', 'relatedFeedbackId', 'consentToContact', 'contactName', 'contactPhone', 'ward', 'createdAt']) &&
+      return data.keys().hasAll(['requestId', 'consentToContact', 'createdAt']) &&
+        data.keys().hasOnly([
+          'requestId', 'consentToContact', 'createdAt',
+          'relatedFeedbackId', 'fullName', 'contactName', 'fatherName',
+          'mobileNumber', 'contactPhone', 'locality', 'ward',
+          'preferredContactMethod', 'subjectOrProblem', 'status',
+          'adminNotes', 'isDemo'
+        ]) &&
         data.requestId is string && data.requestId == requestId && data.requestId.size() > 0 && data.requestId.size() <= 100 &&
-        data.relatedFeedbackId is string && data.relatedFeedbackId.size() > 0 && data.relatedFeedbackId.size() <= 100 &&
         data.consentToContact is bool && data.consentToContact == true &&
         data.createdAt is string && data.createdAt.size() > 0 && data.createdAt.size() <= 100 &&
+        isOptionalStringValid(data, 'relatedFeedbackId', 0, 100) &&
+        isOptionalStringValid(data, 'fullName', 0, 100) &&
         isOptionalStringValid(data, 'contactName', 0, 100) &&
+        isOptionalStringValid(data, 'fatherName', 0, 100) &&
+        isOptionalStringValid(data, 'mobileNumber', 0, 30) &&
         isOptionalStringValid(data, 'contactPhone', 0, 30) &&
-        isOptionalStringValid(data, 'ward', 0, 100);
+        isOptionalStringValid(data, 'locality', 0, 100) &&
+        isOptionalStringValid(data, 'ward', 0, 100) &&
+        isOptionalStringValid(data, 'subjectOrProblem', 0, 1500) &&
+        isOptionalStringValid(data, 'adminNotes', 0, 2000) &&
+        isOptionalBoolValid(data, 'isDemo') &&
+        (!('preferredContactMethod' in data) || (data.preferredContactMethod is string && isValidPreferredContactMethod(data.preferredContactMethod))) &&
+        (!('status' in data) || (data.status is string && isValidFollowupStatus(data.status)));
     }
 
     // Validator: followup_requests update (admin only)
     function isValidFollowupRequestUpdate(data, existingData, requestId) {
-      return data.keys().hasAll(['requestId', 'relatedFeedbackId', 'consentToContact', 'createdAt']) &&
-        data.keys().hasOnly(['requestId', 'relatedFeedbackId', 'consentToContact', 'contactName', 'contactPhone', 'ward', 'createdAt']) &&
+      return data.keys().hasAll(['requestId', 'consentToContact', 'createdAt']) &&
+        data.keys().hasOnly([
+          'requestId', 'consentToContact', 'createdAt',
+          'relatedFeedbackId', 'fullName', 'contactName', 'fatherName',
+          'mobileNumber', 'contactPhone', 'locality', 'ward',
+          'preferredContactMethod', 'subjectOrProblem', 'status',
+          'adminNotes', 'isDemo'
+        ]) &&
         data.requestId == existingData.requestId &&
-        data.relatedFeedbackId == existingData.relatedFeedbackId &&
         data.createdAt == existingData.createdAt &&
+        (!('relatedFeedbackId' in existingData) || data.relatedFeedbackId == existingData.relatedFeedbackId) &&
         data.consentToContact is bool &&
+        isOptionalStringValid(data, 'relatedFeedbackId', 0, 100) &&
+        isOptionalStringValid(data, 'fullName', 0, 100) &&
         isOptionalStringValid(data, 'contactName', 0, 100) &&
+        isOptionalStringValid(data, 'fatherName', 0, 100) &&
+        isOptionalStringValid(data, 'mobileNumber', 0, 30) &&
         isOptionalStringValid(data, 'contactPhone', 0, 30) &&
-        isOptionalStringValid(data, 'ward', 0, 100);
+        isOptionalStringValid(data, 'locality', 0, 100) &&
+        isOptionalStringValid(data, 'ward', 0, 100) &&
+        isOptionalStringValid(data, 'subjectOrProblem', 0, 1500) &&
+        isOptionalStringValid(data, 'adminNotes', 0, 2000) &&
+        isOptionalBoolValid(data, 'isDemo') &&
+        (!('preferredContactMethod' in data) || (data.preferredContactMethod is string && isValidPreferredContactMethod(data.preferredContactMethod))) &&
+        (!('status' in data) || (data.status is string && isValidFollowupStatus(data.status)));
     }
 
     // Validator: admin user creation & update

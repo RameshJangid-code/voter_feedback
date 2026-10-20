@@ -70,6 +70,12 @@ export function Footer() {
                 </Link>
               </li>
               <li>
+                <Link href="/contact" className="hover:text-white transition-colors flex items-center gap-2 text-emerald-400 font-medium">
+                  <Phone className="w-3.5 h-3.5" />
+                  <span>{t.navContact}</span>
+                </Link>
+              </li>
+              <li>
                 <Link href="/issues" className="hover:text-white transition-colors flex items-center gap-2">
                   <BarChart3 className="w-3.5 h-3.5" />
                   <span>{t.navIssues}</span>
@@ -78,7 +84,7 @@ export function Footer() {
               <li>
                 <Link href="/opinion" className="hover:text-white transition-colors flex items-center gap-2 text-amber-400 font-medium">
                   <Vote className="w-3.5 h-3.5" />
-                  <span>{t.navOpinion}</span>
+                  <span>{t.btnGiveOpinion}</span>
                 </Link>
               </li>
               <li>

@@ -8,10 +8,23 @@ import {
   ProblemCategory,
   FeedbackStatus,
   ModerationStatus,
-  OpinionOption,
+  VoteChoice,
+  ExpectationItem,
+  NoReasonItem,
+  PreferredContactMethod,
+  PostVoteDetail,
+  PollItem,
 } from "@/types";
 import { defaultSiteContent } from "./initialContent";
-import { demoPublicFeedback, demoFollowups, demoAnonymousOpinions } from "./seedData";
+import {
+  demoPublicFeedback,
+  demoFollowups,
+  demoAnonymousOpinions,
+  demoPostVoteDetails,
+  demoPolls,
+  EXPECTATION_OPTIONS,
+} from "./seedData";
+
 import { isFirebaseConfigured, db } from "./firebase";
 import {
   collection,
@@ -32,14 +45,19 @@ const STORAGE_KEYS = {
   OPINIONS: "budivada_anonymous_opinions_v1",
   CONTENT: "budivada_site_content_v1",
   LOGS: "budivada_audit_logs_v1",
+  POST_VOTE_DETAILS: "budivada_post_vote_details_v1",
+  POLLS: "budivada_admin_polls_v1",
 };
 
 // In-memory fallback if server-side rendering or localStorage not available
 let memFeedback: PublicFeedback[] = [...demoPublicFeedback];
 let memFollowups: FollowupRequest[] = [...demoFollowups];
-let memOpinions: AnonymousOpinion[] = [...demoAnonymousOpinions];
+let memOpinions: AnonymousOpinion[] = []; // starts empty — only real user votes
 let memContent: SiteContent = { ...defaultSiteContent };
+let memPostVoteDetails: PostVoteDetail[] = []; // starts empty — only real voter details
+let memPolls: PollItem[] = [...demoPolls];
 let memLogs: AuditLog[] = [
+
   {
     logId: "log-init-1",
     adminEmail: "admin@budivada.in",
@@ -79,6 +97,21 @@ function setLocalItem<T>(key: string, data: T) {
 // Public Feedback Service
 // -------------------------------------------------------------
 export async function getAllFeedback(includePrivate = false): Promise<PublicFeedback[]> {
+  if (typeof window !== "undefined") {
+    try {
+      const res = await fetch(`/api/feedback?all=${includePrivate}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.feedback && Array.isArray(data.feedback)) {
+          setLocalItem(STORAGE_KEYS.FEEDBACK, data.feedback);
+          return data.feedback;
+        }
+      }
+    } catch {
+      // fallback
+    }
+  }
+
   if (isFirebaseConfigured && db) {
     try {
       const colRef = collection(db, "public_feedback");
@@ -109,16 +142,40 @@ export async function submitPublicFeedback(params: {
   ward?: string;
   villageDevelopmentSuggestion?: string;
   followup?: {
+    fullName?: string;
     contactName?: string;
+    fatherName?: string;
+    mobileNumber?: string;
     contactPhone?: string;
     ward?: string;
+    locality?: string;
+    preferredContactMethod?: PreferredContactMethod;
     consentToContact: boolean;
   };
 }): Promise<{ feedbackId: string; followupId?: string }> {
-  const timestamp = new Date().toISOString();
-  const feedbackId = `fb-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+  let feedbackId = `fb-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+  let followupId: string | undefined;
 
+  if (typeof window !== "undefined") {
+    try {
+      const res = await fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(params),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.feedbackId) feedbackId = data.feedbackId;
+        if (data.followupId) followupId = data.followupId;
+      }
+    } catch (e) {
+      console.warn("API save feedback failed, falling back to local:", e);
+    }
+  }
+
+  const timestamp = new Date().toISOString();
   const newFeedback: PublicFeedback = {
+
     feedbackId,
     category: params.category,
     description: params.description.trim(),
@@ -126,26 +183,34 @@ export async function submitPublicFeedback(params: {
     priority: params.priority,
     ward: params.ward?.trim() || "",
     villageDevelopmentSuggestion: params.villageDevelopmentSuggestion?.trim() || "",
-    moderationStatus: "approved", // default approved for public viewing
+    moderationStatus: "approved",
     status: "pending",
     internalNotes: "",
     createdAt: timestamp,
     isPublic: true,
+    isDemo: false,
   };
-
-  let followupId: string | undefined;
 
   // Stored strictly in separate followup_requests collection if consented
   if (params.followup && params.followup.consentToContact) {
+
     followupId = `req-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
     const newFollowup: FollowupRequest = {
       requestId: followupId,
       relatedFeedbackId: feedbackId,
-      contactName: params.followup.contactName?.trim() || "नाम नहीं दिया",
-      contactPhone: params.followup.contactPhone?.trim() || "",
+      fullName: params.followup.fullName?.trim() || params.followup.contactName?.trim() || "नाम नहीं दिया",
+      contactName: params.followup.fullName?.trim() || params.followup.contactName?.trim() || "नाम नहीं दिया",
+      fatherName: params.followup.fatherName?.trim() || "",
+      mobileNumber: params.followup.mobileNumber?.trim() || params.followup.contactPhone?.trim() || "",
+      contactPhone: params.followup.mobileNumber?.trim() || params.followup.contactPhone?.trim() || "",
+      locality: params.followup.locality?.trim() || params.followup.ward?.trim() || params.ward || "",
       ward: params.followup.ward?.trim() || params.ward || "",
+      preferredContactMethod: params.followup.preferredContactMethod || "phone",
+      subjectOrProblem: params.description.trim(),
       consentToContact: true,
+      status: "new",
       createdAt: timestamp,
+      isDemo: false,
     };
 
     if (isFirebaseConfigured && db) {
@@ -178,24 +243,184 @@ export async function submitPublicFeedback(params: {
 }
 
 // -------------------------------------------------------------
-// Anonymous Opinion Poll Service
+// Separate Voluntary Contact Form Service
+// (For residents who want to be contacted about village problems/suggestions)
+// Strict rule: NEVER linked to political opinions/surveys!
+// -------------------------------------------------------------
+export async function submitContactRequest(params: {
+  fullName: string;
+  fatherName?: string;
+  mobileNumber: string;
+  locality?: string;
+  preferredContactMethod?: PreferredContactMethod;
+  subjectOrProblem?: string;
+  consentToContact: boolean;
+}): Promise<{ requestId: string }> {
+  if (!params.consentToContact) {
+    throw new Error("सहमति चेकबॉक्स अनिवार्य है।");
+  }
+
+  const timestamp = new Date().toISOString();
+  const requestId = `req-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+
+  const newRequest: FollowupRequest = {
+    requestId,
+    fullName: params.fullName.trim(),
+    contactName: params.fullName.trim(),
+    fatherName: params.fatherName?.trim() || "",
+    mobileNumber: params.mobileNumber.trim(),
+    contactPhone: params.mobileNumber.trim(),
+    locality: params.locality?.trim() || "",
+    ward: params.locality?.trim() || "",
+    preferredContactMethod: params.preferredContactMethod || "phone",
+    subjectOrProblem: params.subjectOrProblem?.trim() || "",
+    consentToContact: true,
+    status: "new",
+    adminNotes: "",
+    createdAt: timestamp,
+    isDemo: false,
+  };
+
+  if (isFirebaseConfigured && db) {
+    try {
+      await setDoc(doc(db, "followup_requests", requestId), newRequest);
+    } catch (e) {
+      console.warn("Firestore save contact request failed, saving locally:", e);
+    }
+  }
+
+  const current = getLocalItem<FollowupRequest[]>(STORAGE_KEYS.FOLLOWUPS, memFollowups);
+  current.unshift(newRequest);
+  setLocalItem(STORAGE_KEYS.FOLLOWUPS, current);
+  memFollowups = current;
+
+  return { requestId };
+}
+
+export async function getContactRequests(): Promise<FollowupRequest[]> {
+  if (typeof window !== "undefined") {
+    try {
+      const res = await fetch("/api/contact");
+      if (res.ok) {
+        const data = await res.json();
+        if (data.contacts && Array.isArray(data.contacts)) {
+          setLocalItem(STORAGE_KEYS.FOLLOWUPS, data.contacts);
+          return data.contacts;
+        }
+      }
+    } catch {
+      // fallback
+    }
+  }
+
+  if (isFirebaseConfigured && db) {
+    try {
+      const colRef = collection(db, "followup_requests");
+      const q = query(colRef, orderBy("createdAt", "desc"));
+      const snapshot = await getDocs(q);
+      const items: FollowupRequest[] = [];
+      snapshot.forEach((d) => items.push(d.data() as FollowupRequest));
+      if (items.length > 0) return items;
+    } catch (err) {
+      console.warn("Firestore read contact requests failed:", err);
+    }
+  }
+  return getLocalItem<FollowupRequest[]>(STORAGE_KEYS.FOLLOWUPS, memFollowups);
+}
+
+
+// Backward compatibility alias
+export const getFollowupRequests = getContactRequests;
+
+export async function updateContactRequestStatus(
+  requestId: string,
+  updates: { status: "new" | "contacted" | "in_progress" | "resolved"; adminNotes?: string },
+  adminEmail: string
+): Promise<FollowupRequest | null> {
+  const all = await getContactRequests();
+  const index = all.findIndex((r) => r.requestId === requestId);
+  if (index === -1) return null;
+
+  const updated: FollowupRequest = {
+    ...all[index],
+    status: updates.status,
+    adminNotes: updates.adminNotes !== undefined ? updates.adminNotes : all[index].adminNotes,
+  };
+  all[index] = updated;
+
+  if (isFirebaseConfigured && db) {
+    try {
+      const docRef = doc(db, "followup_requests", requestId);
+      await updateDoc(docRef, { status: updates.status, adminNotes: updated.adminNotes });
+    } catch (e) {
+      console.warn("Firestore update contact request failed:", e);
+    }
+  }
+
+  setLocalItem(STORAGE_KEYS.FOLLOWUPS, all);
+  memFollowups = all;
+
+  await recordAuditLog({
+    adminEmail,
+    action: "UPDATE_CONTACT_REQUEST",
+    targetId: requestId,
+    details: `Updated contact request status to ${updates.status}`,
+  });
+
+  return updated;
+}
+
+// -------------------------------------------------------------
+// Anonymous Survey Service
 // (Strict privacy: NO names, NO phone numbers, NO device IDs)
 // -------------------------------------------------------------
-export async function submitAnonymousOpinion(selectedOption: OpinionOption): Promise<{ responseId: string }> {
+export async function submitAnonymousSurvey(params: {
+  voteChoice: VoteChoice;
+  expectations?: string[];
+  biggestExpectation?: string;
+  noReasonPredefined?: string;
+  noReasonCustom?: string;
+}): Promise<{ responseId: string; pollId?: string; optionId?: string }> {
   const timestamp = new Date().toISOString();
-  const responseId = `op-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+  let responseId = `op-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+  let pollId: string | undefined;
+  let optionId: string | undefined;
+
+  if (typeof window !== "undefined") {
+    try {
+      const res = await fetch("/api/opinion", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(params),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.responseId) responseId = data.responseId;
+        if (data.pollId) pollId = data.pollId;
+        if (data.optionId) optionId = data.optionId;
+      }
+    } catch {
+      // fallback
+    }
+  }
 
   const newOpinion: AnonymousOpinion = {
     responseId,
-    selectedOption,
+    voteChoice: params.voteChoice,
+    selectedOption: params.voteChoice === "yes" ? "support" : "undecided",
+    expectations: params.voteChoice === "yes" ? params.expectations || [] : [],
+    biggestExpectation: params.voteChoice === "yes" ? params.biggestExpectation?.trim() || "" : "",
+    noReasonPredefined: params.voteChoice === "no" ? params.noReasonPredefined?.trim() || "" : "",
+    noReasonCustom: params.voteChoice === "no" ? params.noReasonCustom?.trim() || "" : "",
     createdAt: timestamp,
+    isDemo: false, // strictly marked as real submission
   };
 
   if (isFirebaseConfigured && db) {
     try {
       await setDoc(doc(db, "anonymous_opinions", responseId), newOpinion);
     } catch (e) {
-      console.warn("Firestore save opinion failed, saving locally:", e);
+      console.warn("Firestore save survey failed, saving locally:", e);
     }
   }
 
@@ -204,7 +429,16 @@ export async function submitAnonymousOpinion(selectedOption: OpinionOption): Pro
   setLocalItem(STORAGE_KEYS.OPINIONS, currentOpinions);
   memOpinions = currentOpinions;
 
-  return { responseId };
+  return { responseId, pollId, optionId };
+}
+
+
+// Backward compatibility alias
+export async function submitAnonymousOpinion(selectedOption: "support" | "undecided" | "other"): Promise<{ responseId: string }> {
+  return submitAnonymousSurvey({
+    voteChoice: selectedOption === "support" ? "yes" : "no",
+    noReasonPredefined: selectedOption !== "support" ? (selectedOption === "undecided" ? "अभी अनिर्णित" : "अन्य विकल्प") : undefined,
+  });
 }
 
 export async function getAnonymousOpinions(): Promise<AnonymousOpinion[]> {
@@ -222,31 +456,50 @@ export async function getAnonymousOpinions(): Promise<AnonymousOpinion[]> {
   return getLocalItem<AnonymousOpinion[]>(STORAGE_KEYS.OPINIONS, memOpinions);
 }
 
-// -------------------------------------------------------------
-// Followup Requests (Admin Only)
-// -------------------------------------------------------------
-export async function getFollowupRequests(): Promise<FollowupRequest[]> {
-  if (isFirebaseConfigured && db) {
+/**
+ * Public Survey Count:
+ * Calculated from real submitted survey records in MongoDB / storage
+ */
+export async function getPublicSurveyCount(): Promise<number> {
+  if (typeof window !== "undefined") {
     try {
-      const colRef = collection(db, "followup_requests");
-      const q = query(colRef, orderBy("createdAt", "desc"));
-      const snapshot = await getDocs(q);
-      const items: FollowupRequest[] = [];
-      snapshot.forEach((d) => items.push(d.data() as FollowupRequest));
-      if (items.length > 0) return items;
-    } catch (err) {
-      console.warn("Firestore read followups failed:", err);
+      const res = await fetch("/api/opinion");
+      if (res.ok) {
+        const data = await res.json();
+        if (typeof data.publicSurveyCount === "number" && data.publicSurveyCount > 0) {
+          return data.publicSurveyCount;
+        }
+      }
+    } catch {
+      // fallback
     }
   }
-  return getLocalItem<FollowupRequest[]>(STORAGE_KEYS.FOLLOWUPS, memFollowups);
+
+  const opinions = await getAnonymousOpinions();
+  return opinions.length;
 }
 
 // -------------------------------------------------------------
 // Aggregate Analytics Service
 // -------------------------------------------------------------
 export async function getAggregateStats(): Promise<AggregateStats> {
+  if (typeof window !== "undefined") {
+    try {
+      const res = await fetch("/api/stats");
+      if (res.ok) {
+        const data = await res.json();
+        if (data.stats) {
+          return data.stats as AggregateStats;
+        }
+      }
+    } catch {
+      // fallback
+    }
+  }
+
   const allFeedback = await getAllFeedback(true);
   const opinions = await getAnonymousOpinions();
+
 
   const categoryCounts: Record<ProblemCategory, number> = {
     water: 0,
@@ -286,20 +539,87 @@ export async function getAggregateStats(): Promise<AggregateStats> {
     else if (item.priority === "low") lowPriorityCount++;
   }
 
-  let support = 0;
-  let undecided = 0;
-  let other = 0;
+  // Survey Analytics Calculation
+  let yesCount = 0;
+  let noCount = 0;
+  let realSurveysCount = 0;
+  let demoSurveysCount = 0;
+
+  const expectationCountMap: Record<string, number> = {};
+  const noReasonCountMap: Record<string, number> = {};
+  const dateWiseMap: Record<string, { yes: number; no: number; total: number }> = {};
 
   for (const op of opinions) {
-    if (op.selectedOption === "support") support++;
-    else if (op.selectedOption === "undecided") undecided++;
-    else if (op.selectedOption === "other") other++;
+    const isReal = op.isDemo !== true;
+    if (isReal) realSurveysCount++;
+    else demoSurveysCount++;
+
+    const isYes = op.voteChoice === "yes" || op.selectedOption === "support";
+    if (isYes) {
+      yesCount++;
+    } else {
+      noCount++;
+    }
+
+    // Expectations count
+    if (op.expectations && Array.isArray(op.expectations)) {
+      for (const exp of op.expectations) {
+        expectationCountMap[exp] = (expectationCountMap[exp] || 0) + 1;
+      }
+    }
+
+    // NO reasons count
+    if (!isYes) {
+      const reasonKey = op.noReasonPredefined || (op.noReasonCustom ? "व्यक्तिगत कारण दिया" : "कारण नहीं बताया (छोड़ा गया)");
+      noReasonCountMap[reasonKey] = (noReasonCountMap[reasonKey] || 0) + 1;
+    }
+
+    // Date-wise map
+    const dateStr = op.createdAt ? op.createdAt.split("T")[0] : "पूर्व";
+    if (!dateWiseMap[dateStr]) {
+      dateWiseMap[dateStr] = { yes: 0, no: 0, total: 0 };
+    }
+    dateWiseMap[dateStr].total++;
+    if (isYes) dateWiseMap[dateStr].yes++;
+    else dateWiseMap[dateStr].no++;
   }
 
-  const totalOpinions = opinions.length;
-  const supportPercent = totalOpinions > 0 ? Math.round((support / totalOpinions) * 100) : 0;
-  const undecidedPercent = totalOpinions > 0 ? Math.round((undecided / totalOpinions) * 100) : 0;
-  const otherPercent = totalOpinions > 0 ? Math.round((other / totalOpinions) * 100) : 0;
+  const totalSurveys = opinions.length;
+  const yesPercent = totalSurveys > 0 ? Math.round((yesCount / totalSurveys) * 100) : 0;
+  const noPercent = totalSurveys > 0 ? Math.round((noCount / totalSurveys) * 100) : 0;
+
+  // Compile top expectations
+  const topExpectations: ExpectationItem[] = EXPECTATION_OPTIONS.map((opt) => {
+    const count = expectationCountMap[opt.key] || 0;
+    const percent = yesCount > 0 ? Math.round((count / yesCount) * 100) : 0;
+    return {
+      key: opt.key,
+      labelHi: opt.labelHi,
+      labelEn: opt.labelEn,
+      count,
+      percent,
+    };
+  }).sort((a, b) => b.count - a.count);
+
+  // Compile common NO reasons
+  const commonNoReasons: NoReasonItem[] = Object.entries(noReasonCountMap)
+    .map(([reason, count]) => ({
+      reason,
+      count,
+      percent: noCount > 0 ? Math.round((count / noCount) * 100) : 0,
+    }))
+    .sort((a, b) => b.count - a.count);
+
+  // Date-wise trend sorted
+  const dateWiseTrend = Object.entries(dateWiseMap)
+    .sort(([dateA], [dateB]) => dateA.localeCompare(dateB))
+    .slice(-7)
+    .map(([date, data]) => ({
+      date,
+      yes: data.yes,
+      no: data.no,
+      total: data.total,
+    }));
 
   return {
     totalFeedback: allFeedback.length,
@@ -313,13 +633,25 @@ export async function getAggregateStats(): Promise<AggregateStats> {
     lowPriorityCount,
     categoryCounts,
     opinionStats: {
-      total: totalOpinions,
-      support,
-      undecided,
-      other,
-      supportPercent,
-      undecidedPercent,
-      otherPercent,
+      total: totalSurveys,
+      support: yesCount,
+      undecided: noCount,
+      other: 0,
+      supportPercent: yesPercent,
+      undecidedPercent: noPercent,
+      otherPercent: 0,
+    },
+    surveyStats: {
+      totalSurveys,
+      realSurveysCount,
+      demoSurveysCount,
+      yesCount,
+      noCount,
+      yesPercent,
+      noPercent,
+      topExpectations,
+      commonNoReasons,
+      dateWiseTrend,
     },
   };
 }
@@ -442,7 +774,7 @@ export async function recordAuditLog(log: Omit<AuditLog, "logId" | "timestamp">)
 
   const logs = getLocalItem<AuditLog[]>(STORAGE_KEYS.LOGS, memLogs);
   logs.unshift(fullLog);
-  setLocalItem(STORAGE_KEYS.LOGS, logs.slice(0, 200)); // retain recent 200
+  setLocalItem(STORAGE_KEYS.LOGS, logs.slice(0, 200));
   memLogs = logs;
 }
 
@@ -463,8 +795,7 @@ export async function getAuditLogs(): Promise<AuditLog[]> {
 }
 
 // -------------------------------------------------------------
-// CSV Export Generator
-// (Clean, safe escaping without leaking anonymous opinions)
+// CSV Export Generators
 // -------------------------------------------------------------
 export function generateFeedbackCSV(feedbackList: PublicFeedback[]): string {
   const headers = [
@@ -503,3 +834,452 @@ export function generateFeedbackCSV(feedbackList: PublicFeedback[]): string {
 
   return [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
 }
+
+export function generateContactsCSV(contactsList: FollowupRequest[]): string {
+  const headers = [
+    "Request ID",
+    "Full Name",
+    "Father Name",
+    "Mobile Number",
+    "Locality/Ward",
+    "Preferred Contact Method",
+    "Subject or Problem",
+    "Status",
+    "Consent Given",
+    "Created Date",
+    "Admin Notes",
+  ];
+
+  const escapeCSV = (str: string | undefined) => {
+    if (!str) return '""';
+    const clean = str.replace(/"/g, '""').replace(/\r\n/g, " ").replace(/\n/g, " ");
+    return `"${clean}"`;
+  };
+
+  const rows = contactsList.map((item) => [
+    escapeCSV(item.requestId),
+    escapeCSV(item.fullName || item.contactName),
+    escapeCSV(item.fatherName),
+    escapeCSV(item.mobileNumber || item.contactPhone),
+    escapeCSV(item.locality || item.ward),
+    escapeCSV(item.preferredContactMethod || "phone"),
+    escapeCSV(item.subjectOrProblem),
+    escapeCSV(item.status || "new"),
+    escapeCSV(item.consentToContact ? "Yes (स्वीकृत)" : "No"),
+    escapeCSV(new Date(item.createdAt).toLocaleDateString("hi-IN")),
+    escapeCSV(item.adminNotes),
+  ]);
+
+  return [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+}
+
+export function generateSurveyAggregateCSV(stats: AggregateStats): string {
+  const lines: string[] = [];
+
+  lines.push("बुड़ीवाड़ा सरपंच चुनाव 2026 - सर्वे सांख्यिकी रिपोर्ट");
+  lines.push(`रिपोर्ट दिनांक,${new Date().toLocaleDateString("hi-IN")}`);
+  lines.push("");
+  lines.push("सर्वे सारांश (Survey Summary)");
+  lines.push(`कुल सर्वे प्रविष्टियाँ,${stats.surveyStats.totalSurveys}`);
+  lines.push(`वास्तविक ग्रामवासी प्रविष्टियाँ,${stats.surveyStats.realSurveysCount}`);
+  lines.push(`डेमो/परीक्षण प्रविष्टियाँ,${stats.surveyStats.demoSurveysCount}`);
+  lines.push(`हाँ (समर्थन) कुल संख्या,${stats.surveyStats.yesCount}`);
+  lines.push(`हाँ (समर्थन) प्रतिशत,${stats.surveyStats.yesPercent}%`);
+  lines.push(`नहीं (असहमत/अन्य) कुल संख्या,${stats.surveyStats.noCount}`);
+  lines.push(`नहीं प्रतिशत,${stats.surveyStats.noPercent}%`);
+  lines.push("");
+  lines.push("ग्रामवासियों की शीर्ष अपेक्षाएँ (Top Expectations)");
+  lines.push("प्राथमिकता क्षेत्र,समर्थक संख्या,प्रतिशत");
+  for (const exp of stats.surveyStats.topExpectations) {
+    lines.push(`"${exp.labelHi}",${exp.count},${exp.percent}%`);
+  }
+  lines.push("");
+  lines.push("असहमत उत्तरदाताओं द्वारा चुने गए कारण (Common NO Reasons)");
+  lines.push("कारण,संख्या,प्रतिशत");
+  for (const r of stats.surveyStats.commonNoReasons) {
+    lines.push(`"${r.reason.replace(/"/g, '""')}",${r.count},${r.percent}%`);
+  }
+
+  return lines.join("\n");
+}
+
+// -------------------------------------------------------------
+// Post-Vote Optional Voter Details Service
+// (Voluntary details after voting - strictly decoupled from vote preference)
+// -------------------------------------------------------------
+export async function submitPostVoteDetail(params: {
+  relatedSurveyId?: string;
+  pollId?: string;
+  pollOptionId?: string;
+  voteChoiceLabel?: string;
+  fullName?: string;
+  fatherName?: string;
+  mobileNumber?: string;
+  locality?: string;
+  notes?: string;
+}): Promise<{ id: string }> {
+  let id = `pvd-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+
+  if (typeof window !== "undefined") {
+    try {
+      const res = await fetch("/api/voters", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(params),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.id) id = data.id;
+      }
+    } catch {
+      // fallback
+    }
+  }
+
+  const timestamp = new Date().toISOString();
+  const newDetail: PostVoteDetail = {
+    id,
+    relatedSurveyId: params.relatedSurveyId,
+    pollId: params.pollId,
+    pollOptionId: params.pollOptionId,
+    voteChoiceLabel: params.voteChoiceLabel,
+    fullName: params.fullName?.trim() || "",
+    fatherName: params.fatherName?.trim() || "",
+    mobileNumber: params.mobileNumber?.trim() || "",
+    locality: params.locality?.trim() || "",
+    notes: params.notes?.trim() || "",
+    createdAt: timestamp,
+    isDemo: false,
+  };
+
+  if (isFirebaseConfigured && db) {
+    try {
+      await setDoc(doc(db, "post_vote_details", id), newDetail);
+    } catch (e) {
+      console.warn("Firestore save post-vote detail failed, saving locally:", e);
+    }
+  }
+
+  const all = getLocalItem<PostVoteDetail[]>(STORAGE_KEYS.POST_VOTE_DETAILS, memPostVoteDetails);
+  all.unshift(newDetail);
+  setLocalItem(STORAGE_KEYS.POST_VOTE_DETAILS, all);
+  memPostVoteDetails = all;
+
+  return { id };
+}
+
+
+export async function getPostVoteDetails(): Promise<PostVoteDetail[]> {
+  if (typeof window !== "undefined") {
+    try {
+      const res = await fetch("/api/voters");
+      if (res.ok) {
+        const data = await res.json();
+        if (data.voters && Array.isArray(data.voters)) {
+          setLocalItem(STORAGE_KEYS.POST_VOTE_DETAILS, data.voters);
+          return data.voters;
+        }
+      }
+    } catch {
+      // fallback
+    }
+  }
+
+  if (isFirebaseConfigured && db) {
+    try {
+      const colRef = collection(db, "post_vote_details");
+      const q = query(colRef, orderBy("createdAt", "desc"));
+      const snapshot = await getDocs(q);
+      const items: PostVoteDetail[] = [];
+      snapshot.forEach((d) => items.push(d.data() as PostVoteDetail));
+      if (items.length > 0) return items;
+    } catch (err) {
+      console.warn("Firestore read post-vote details failed, using fallback:", err);
+    }
+  }
+  return getLocalItem<PostVoteDetail[]>(STORAGE_KEYS.POST_VOTE_DETAILS, memPostVoteDetails);
+}
+
+export function generatePostVoteDetailsCSV(details: PostVoteDetail[]): string {
+  const headers = [
+    "ID",
+    "Full Name (पूरा नाम)",
+    "Father's Name (पिता का नाम)",
+    "Mobile Number (मोबाइल)",
+    "Ward / Locality (वार्ड/मोहल्ला)",
+    "Vote Choice (मत विकल्प)",
+    "Additional Notes (अन्य विवरण)",
+    "Submitted Date (दिनांक)",
+  ];
+
+  const escapeCSV = (str: string | undefined) => {
+    if (!str) return '""';
+    const clean = str.replace(/"/g, '""').replace(/\r\n/g, " ").replace(/\n/g, " ");
+    return `"${clean}"`;
+  };
+
+  const rows = details.map((d) => [
+    escapeCSV(d.id),
+    escapeCSV(d.fullName || "—"),
+    escapeCSV(d.fatherName || "—"),
+    escapeCSV(d.mobileNumber || "—"),
+    escapeCSV(d.locality || "—"),
+    escapeCSV(d.voteChoiceLabel || "—"),
+    escapeCSV(d.notes || "—"),
+    escapeCSV(new Date(d.createdAt).toLocaleDateString("hi-IN")),
+  ]);
+
+  return [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+}
+
+
+// -------------------------------------------------------------
+// Admin-Only Polls Management Service
+// -------------------------------------------------------------
+export async function getAllPolls(): Promise<PollItem[]> {
+  if (typeof window !== "undefined") {
+    try {
+      const res = await fetch("/api/polls");
+      if (res.ok) {
+        const data = await res.json();
+        if (data.polls && Array.isArray(data.polls)) {
+          setLocalItem(STORAGE_KEYS.POLLS, data.polls);
+          return data.polls;
+        }
+      }
+    } catch {
+      // fallback
+    }
+  }
+
+  if (isFirebaseConfigured && db) {
+    try {
+      const colRef = collection(db, "admin_polls");
+      const snapshot = await getDocs(colRef);
+      const items: PollItem[] = [];
+      snapshot.forEach((d) => items.push(d.data() as PollItem));
+      if (items.length > 0) {
+        return items.sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
+      }
+    } catch (err) {
+      console.warn("Firestore read polls failed, using fallback:", err);
+    }
+  }
+  return getLocalItem<PollItem[]>(STORAGE_KEYS.POLLS, memPolls);
+}
+
+export async function getActivePoll(): Promise<PollItem> {
+  if (typeof window !== "undefined") {
+    try {
+      const res = await fetch("/api/polls");
+      if (res.ok) {
+        const data = await res.json();
+        if (data.activePoll) {
+          return data.activePoll;
+        }
+      }
+    } catch {
+      // fallback
+    }
+  }
+
+  const polls = await getAllPolls();
+  const active = polls.find((p) => p.isActive);
+  if (active) return active;
+  return polls[0] || demoPolls[0];
+}
+
+export async function createPoll(
+  params: {
+    titleHi: string;
+    titleEn: string;
+    descriptionHi?: string;
+    descriptionEn?: string;
+    options: { textHi: string; textEn: string }[];
+    setActive?: boolean;
+  },
+  adminEmail: string
+): Promise<PollItem> {
+  if (typeof window !== "undefined") {
+    try {
+      await fetch("/api/polls", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(params),
+      });
+    } catch {
+      // fallback
+    }
+  }
+
+  const timestamp = new Date().toISOString();
+  const pollId = `poll-${Date.now()}-${Math.random().toString(36).substring(2, 5)}`;
+
+  const newPoll: PollItem = {
+    id: pollId,
+    titleHi: params.titleHi.trim(),
+    titleEn: params.titleEn.trim() || params.titleHi.trim(),
+    descriptionHi: params.descriptionHi?.trim() || "",
+    descriptionEn: params.descriptionEn?.trim() || "",
+    isActive: Boolean(params.setActive),
+    isDefault: false,
+    createdAt: timestamp,
+    totalVotes: 0,
+    options: params.options.map((opt, idx) => ({
+      id: `opt-${pollId}-${idx + 1}`,
+      textHi: opt.textHi.trim(),
+      textEn: opt.textEn.trim() || opt.textHi.trim(),
+      votesCount: 0,
+    })),
+  };
+
+  const polls = await getAllPolls();
+
+  if (newPoll.isActive) {
+    polls.forEach((p) => {
+      p.isActive = false;
+    });
+  }
+
+  polls.unshift(newPoll);
+
+  if (isFirebaseConfigured && db) {
+    try {
+      await setDoc(doc(db, "admin_polls", pollId), newPoll);
+      if (newPoll.isActive) {
+        for (const p of polls) {
+          if (p.id !== pollId) {
+            await setDoc(doc(db, "admin_polls", p.id), p);
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("Firestore save poll failed, saving locally:", e);
+    }
+  }
+
+  setLocalItem(STORAGE_KEYS.POLLS, polls);
+  memPolls = polls;
+
+  await recordAuditLog({
+    adminEmail,
+    action: "CREATE_POLL",
+    targetId: pollId,
+    details: `Created new poll: ${newPoll.titleHi} (Active: ${newPoll.isActive})`,
+  });
+
+  return newPoll;
+}
+
+export async function setActivePoll(pollId: string, adminEmail: string): Promise<void> {
+  if (typeof window !== "undefined") {
+    try {
+      await fetch("/api/polls", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pollId, action: "setActive" }),
+      });
+    } catch {
+      // fallback
+    }
+  }
+
+  const polls = await getAllPolls();
+  for (const p of polls) {
+    p.isActive = p.id === pollId;
+    if (isFirebaseConfigured && db) {
+      try {
+        await updateDoc(doc(db, "admin_polls", p.id), { isActive: p.isActive });
+      } catch (e) {
+        console.warn("Firestore update poll failed:", e);
+      }
+    }
+  }
+  setLocalItem(STORAGE_KEYS.POLLS, polls);
+  memPolls = polls;
+
+  await recordAuditLog({
+    adminEmail,
+    action: "SET_ACTIVE_POLL",
+    targetId: pollId,
+    details: `Set poll ${pollId} as active`,
+  });
+}
+
+export async function togglePollStatus(pollId: string, adminEmail: string): Promise<void> {
+  if (typeof window !== "undefined") {
+    try {
+      await fetch("/api/polls", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pollId, action: "toggle" }),
+      });
+    } catch {
+      // fallback
+    }
+  }
+
+  const polls = await getAllPolls();
+  const poll = polls.find((p) => p.id === pollId);
+  if (!poll) return;
+
+  poll.isActive = !poll.isActive;
+
+  if (isFirebaseConfigured && db) {
+    try {
+      await updateDoc(doc(db, "admin_polls", pollId), { isActive: poll.isActive });
+    } catch (e) {
+      console.warn("Firestore toggle poll failed:", e);
+    }
+  }
+
+  setLocalItem(STORAGE_KEYS.POLLS, polls);
+  memPolls = polls;
+
+  await recordAuditLog({
+    adminEmail,
+    action: "TOGGLE_POLL_STATUS",
+    targetId: pollId,
+    details: `Toggled poll ${pollId} status to active: ${poll.isActive}`,
+  });
+}
+
+export async function deletePoll(pollId: string, adminEmail: string): Promise<boolean> {
+  if (typeof window !== "undefined") {
+    try {
+      const res = await fetch(`/api/polls?pollId=${pollId}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        // deleted in MongoDB
+      }
+    } catch {
+      // fallback
+    }
+  }
+
+  const polls = await getAllPolls();
+  const target = polls.find((p) => p.id === pollId);
+  if (!target || target.isDefault) {
+    return false; // Cannot delete default poll
+  }
+
+  const filtered = polls.filter((p) => p.id !== pollId);
+  if (target.isActive && filtered.length > 0) {
+    filtered[0].isActive = true;
+  }
+
+  setLocalItem(STORAGE_KEYS.POLLS, filtered);
+  memPolls = filtered;
+
+  await recordAuditLog({
+    adminEmail,
+    action: "DELETE_POLL",
+    targetId: pollId,
+    details: `Deleted poll: ${target.titleHi}`,
+  });
+
+  return true;
+}
+
+

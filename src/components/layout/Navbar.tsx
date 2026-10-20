@@ -24,10 +24,11 @@ export function Navbar() {
 
   const navLinks = [
     { href: "/", label: t.navHome, icon: <Home className="w-4 h-4" /> },
-    { href: "/about", label: t.navAbout, icon: <User className="w-4 h-4" /> },
+    { href: "/opinion", label: t.btnGiveOpinion, icon: <Vote className="w-4 h-4" /> },
     { href: "/feedback", label: t.navFeedback, icon: <MessageSquarePlus className="w-4 h-4" /> },
+    { href: "/contact", label: t.navContact, icon: <User className="w-4 h-4" /> },
     { href: "/issues", label: t.navIssues, icon: <BarChart3 className="w-4 h-4" /> },
-    { href: "/opinion", label: t.navOpinion, icon: <Vote className="w-4 h-4" /> },
+    { href: "/about", label: t.navAbout, icon: <User className="w-4 h-4" /> },
     { href: "/privacy", label: t.navPrivacy, icon: <Shield className="w-4 h-4" /> },
   ];
 
