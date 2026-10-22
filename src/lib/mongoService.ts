@@ -21,6 +21,15 @@ import {
 
 
 let isSeeded = false;
+let voterDetailsPrivacyMigrated = false;
+let memoryContent: SiteContent = { ...defaultSiteContent };
+
+export function isBinaryOpinionPoll(poll: PollItem): boolean {
+  if (poll.options.length !== 2) return false;
+  const isAffirmative = (label: string) => /हाँ|हां|समर्थन|सहमत|yes|support|agree/i.test(label);
+  const isNegative = (label: string) => /नहीं|असहमत|no|oppose|disagree/i.test(label);
+  return isAffirmative(poll.options[0].textHi) && isNegative(poll.options[1].textHi);
+}
 
 // In-memory active stores for seamless fallback
 const memoryFeedback: PublicFeedback[] = [...realPublicFeedback];
@@ -31,10 +40,12 @@ let memoryPolls: PollItem[] = [...realPolls];
 
 
 // Remove MongoDB internal _id before returning to Next.js components/APIs
-function stripId<T>(doc: any): T {
-  if (!doc) return doc;
-  const { _id: _unusedId, ...rest } = doc;
-  return rest as T;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function stripId<T>(doc: Record<string, unknown> | any): T {
+  if (!doc) return doc as unknown as T;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { _id, ...rest } = doc;
+  return rest as unknown as T;
 }
 
 /**
@@ -72,16 +83,31 @@ export async function ensureMongoSeeded(): Promise<void> {
 
     // 4. Seed Anonymous Opinions if missing
     const opinionsCount = await db.collection(MONGODB_COLLECTIONS.OPINIONS).countDocuments();
-    if (opinionsCount === 0) {
+    if (opinionsCount === 0 && realAnonymousOpinions.length > 0) {
       await db.collection(MONGODB_COLLECTIONS.OPINIONS).insertMany(realAnonymousOpinions);
       console.log(`[MongoDB] Seeded ${realAnonymousOpinions.length} real anonymous community votes`);
     }
 
     // 5. Seed Post-Vote Voter Details if missing
     const pvdCount = await db.collection(MONGODB_COLLECTIONS.POST_VOTE_DETAILS).countDocuments();
-    if (pvdCount === 0) {
+    if (pvdCount === 0 && realPostVoteDetails.length > 0) {
       await db.collection(MONGODB_COLLECTIONS.POST_VOTE_DETAILS).insertMany(realPostVoteDetails);
       console.log(`[MongoDB] Seeded ${realPostVoteDetails.length} real voluntary voter registrations`);
+    }
+
+    if (!voterDetailsPrivacyMigrated) {
+      await db.collection(MONGODB_COLLECTIONS.POST_VOTE_DETAILS).updateMany(
+        {},
+        {
+          $unset: {
+            relatedSurveyId: "",
+            pollId: "",
+            pollOptionId: "",
+            voteChoiceLabel: "",
+          },
+        }
+      );
+      voterDetailsPrivacyMigrated = true;
     }
 
     // 6. Seed Polls if missing
@@ -135,14 +161,20 @@ export async function mongoInsertFeedback(feedback: PublicFeedback): Promise<voi
 export async function mongoUpdateFeedbackStatus(
   feedbackId: string,
   updates: Partial<PublicFeedback>
-): Promise<void> {
+): Promise<boolean> {
   const db = await getMongoDb();
-  if (!db) return;
+  if (!db) {
+    const item = memoryFeedback.find((feedback) => feedback.feedbackId === feedbackId);
+    if (!item) return false;
+    Object.assign(item, updates);
+    return true;
+  }
 
-  await db.collection(MONGODB_COLLECTIONS.FEEDBACK).updateOne(
+  const result = await db.collection(MONGODB_COLLECTIONS.FEEDBACK).updateOne(
     { feedbackId },
     { $set: updates }
   );
+  return result.matchedCount > 0;
 }
 
 // -------------------------------------------------------------
@@ -176,18 +208,20 @@ export async function mongoInsertContactRequest(req: FollowupRequest): Promise<v
 export async function mongoUpdateContactRequestStatus(
   requestId: string,
   updates: Partial<FollowupRequest>
-): Promise<void> {
+): Promise<boolean> {
   const db = await getMongoDb();
   if (!db) {
     const item = memoryFollowups.find((r) => r.requestId === requestId);
-    if (item) Object.assign(item, updates);
-    return;
+    if (!item) return false;
+    Object.assign(item, updates);
+    return true;
   }
 
-  await db.collection(MONGODB_COLLECTIONS.FOLLOWUPS).updateOne(
+  const result = await db.collection(MONGODB_COLLECTIONS.FOLLOWUPS).updateOne(
     { requestId },
     { $set: updates }
   );
+  return result.matchedCount > 0;
 }
 
 // -------------------------------------------------------------
@@ -239,11 +273,13 @@ export async function mongoInsertPostVoteDetail(detail: PostVoteDetail): Promise
   await ensureMongoSeeded();
   const db = await getMongoDb();
   if (!db) {
+    // In-memory fallback
     memoryPostVoteDetails.unshift(detail);
     return;
   }
-
-  await db.collection(MONGODB_COLLECTIONS.POST_VOTE_DETAILS).insertOne(detail);
+  await db.collection(MONGODB_COLLECTIONS.POST_VOTE_DETAILS).insertOne({
+    ...detail,
+  });
 }
 
 // -------------------------------------------------------------
@@ -265,9 +301,9 @@ export async function mongoGetAllPolls(): Promise<PollItem[]> {
 
 export async function mongoGetActivePoll(): Promise<PollItem> {
   const polls = await mongoGetAllPolls();
-  const active = polls.find((p) => p.isActive);
+  const active = polls.find((poll) => poll.isActive && isBinaryOpinionPoll(poll));
   if (active) return active;
-  return polls[0] || realPolls[0];
+  return polls.find(isBinaryOpinionPoll) || realPolls.find(isBinaryOpinionPoll) || realPolls[0];
 }
 
 export async function mongoInsertPoll(poll: PollItem): Promise<void> {
@@ -527,12 +563,13 @@ export async function mongoGetAggregateStats(): Promise<AggregateStats> {
 export async function mongoGetSiteContent(): Promise<SiteContent> {
   await ensureMongoSeeded();
   const db = await getMongoDb();
-  if (!db) return defaultSiteContent;
+  if (!db) return memoryContent;
 
   const doc = await db.collection(MONGODB_COLLECTIONS.CONTENT).findOne({ contentId: "default" });
   if (doc) {
-    const { _id: _unusedId, contentId: _unusedContentId, ...rest } = doc;
-    return rest as SiteContent;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { _id, contentId, ...rest } = doc as Record<string, unknown>;
+    return rest as unknown as SiteContent;
   }
 
   return defaultSiteContent;
@@ -540,13 +577,16 @@ export async function mongoGetSiteContent(): Promise<SiteContent> {
 
 export async function mongoUpdateSiteContent(content: Partial<SiteContent>): Promise<SiteContent> {
   const db = await getMongoDb();
-  if (!db) return defaultSiteContent;
-
   const updated: SiteContent = {
-    ...defaultSiteContent,
+    ...(db ? await mongoGetSiteContent() : memoryContent),
     ...content,
     updatedAt: new Date().toISOString(),
   };
+
+  if (!db) {
+    memoryContent = updated;
+    return updated;
+  }
 
   await db.collection(MONGODB_COLLECTIONS.CONTENT).updateOne(
     { contentId: "default" },

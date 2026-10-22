@@ -1,8 +1,7 @@
+# Janawaaz.in (जनआवाज़) — राजस्थान जन-संवाद एवं जनमत पोर्टल
+### Janawaaz.in – Citizen Opinion & Public Grievance Platform
 
-# श्री मोहन सिंह जी — बुड़ीवाड़ा जन-संवाद एवं समस्या निवारण पोर्टल
-### Shri Mohan Singh Ji – Budivada Sarpanch Public Feedback Portal
-
-A production-grade, mobile-first, bilingual (Hindi-first with English switch) web application and administrative feedback analytics portal built for **Independent Sarpanch Candidate Shri Mohan Singh Ji, Gram Panchayat Budivada (बुड़ीवाड़ा)**.
+A production-grade, mobile-first, bilingual (Hindi-first with English switch) web application and administrative feedback analytics portal built for **Janawaaz.in (जनआवाज़)** — dedicated to transparent civic engagement and independent public opinion polling across Rajasthan. Featured active poll: **Independent Sarpanch Candidate Shri Mohan Singh Ji, Gram Panchayat Budivada (बुड़ीवाड़ा)**.
 
 ---
 
@@ -26,8 +25,8 @@ This portal provides a transparent digital bridge between village residents and 
 - **Typography**: Google Noto Sans Devanagari & Plus Jakarta Sans
 - **Icons**: [Lucide React](https://lucide.dev/)
 - **Visualizations**: [Recharts](https://recharts.org/) (Bar charts, Pie/Donut charts)
-- **Backend & Database**: Firebase Authentication, Cloud Firestore, and hardened `firestore.rules`
-- **Dual-Mode Engine**: Runs immediately out-of-the-box using local storage and seeded demo data, transitioning seamlessly to Cloud Firestore once Firebase keys are provided in `.env.local`.
+- **Backend & Database**: Firebase Authentication for admin identity, MongoDB for application records, and Firestore rules for remaining client-side Firebase data
+- **Local Demo Mode**: Uses seeded in-process data during local development; production requires MongoDB and server-side Firebase Admin credentials.
 
 ---
 
@@ -41,14 +40,14 @@ This portal provides a transparent digital bridge between village residents and 
 | `/about` | प्रत्याशी परिचय (About Candidate) | Objective candidate vision, no fabricated promises, guiding principles, comprehensive FAQs, visiting hours |
 | `/feedback` | समस्या व सुझाव फॉर्म (Grievance Form) | 10 problem categories, urgency selection (High/Medium/Low), ward/mohalla, improvement textarea, anti-spam math challenge, separate consent-based follow-up contact section |
 | `/issues` | गाँव की प्राथमिकताएँ (Village Priorities) | Public aggregate dashboard, category percentage bars, high-priority issues count, moderated suggestions (zero personal identity shown) |
-| `/opinion` | स्वैच्छिक राय-शुमारी (Opinion Poll) | 100% anonymous 3-option voluntary poll with live aggregate breakdown and democratic non-predictive legal disclaimer |
+| `/opinion` | स्वैच्छिक राय-शुमारी (Opinion Poll) | Anonymous binary opinion poll with live aggregate breakdown; personal details are not collected in the voting flow |
 | `/privacy` | गोपनीयता नीति (Privacy Policy) | Plain-language transparency policy detailing anonymity, data segregation, citizen rights, and non-commercial data usage |
 
 ### B. Secure Admin Panel (अधिकृत प्रशासनिक पोर्टल)
 
 | Route | Page Name | Key Features |
 |---|---|---|
-| `/admin/login` | व्यवस्थापक लॉगिन (Admin Login) | Secure authentication with Firebase Auth, input sanitization, rate-limit defense, credentials assistant for demo review |
+| `/admin/login` | व्यवस्थापक लॉगिन (Admin Login) | Firebase Auth login checked against the Firestore `admins` collection; local demo credentials are development-only |
 | `/admin/dashboard` | डैशबोर्ड अवलोकन (Dashboard Overview) | Real-time metric cards (total problems, unique records, high-priority, pending, resolved), Recharts bar & pie charts, recent submissions table |
 | `/admin/feedback` | समस्या प्रबंधन (Feedback Management) | Category/priority/status filters, text search, inline status updater (`pending` \| `under_review` \| `addressed` \| `resolved`), internal admin notes, public visibility toggle, CSV export, consent follow-up inspector |
 | `/admin/analytics` | सांख्यिकी व जनमत (Analytics & Polls) | In-depth aggregated poll percentages, category volume rankings, priority distributions, immutable administrative audit log trail |
@@ -88,7 +87,7 @@ cp .env.example .env.local
 ```
 
 > **Note on Out-of-the-Box Mode**:
-> You can run the application **immediately without setting up Firebase first**. The application includes a resilient local mock engine and demo dataset.
+> You can run the application locally without Firebase or MongoDB. Demo data and changes are held in development process memory and are not durable. Production requires Firebase Auth/Admin setup and a reachable MongoDB database.
 >
 > **Default Local Admin Credentials**:
 > - **Email**: `admin@budivada.in`
@@ -119,11 +118,20 @@ NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=budivada-sarpanch.appspot.com
 NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your-sender-id
 NEXT_PUBLIC_FIREBASE_APP_ID=your-app-id
 ADMIN_SECRET_KEY=generate-a-strong-random-key-here
+MONGODB_URI=your-mongodb-connection-string
+MONGODB_DB=budivada_sarpanch
+FIREBASE_PROJECT_ID=budivada-sarpanch
+# Configure FIREBASE_SERVICE_ACCOUNT_KEY with a service-account JSON secret,
+# or use Google Application Default Credentials on the server.
 ```
+
+The API stores application records in MongoDB. Configure `MONGODB_URI` to a reachable production database; production API writes fail rather than reporting success if MongoDB is unavailable. Admin API routes also verify Firebase ID tokens and require the signed-in UID to exist in Firestore's `admins` collection. Configure server-side Firebase Admin credentials with `FIREBASE_SERVICE_ACCOUNT_KEY` (store the full service-account JSON as a deployment secret) or Google Application Default Credentials.
 
 ### Step 3: Enable Authentication & Firestore
 1. In Firebase Console, navigate to **Build -> Authentication** and enable the **Email/Password** sign-in method.
 2. Navigate to **Build -> Firestore Database** and click **Create database** (select standard production mode).
+3. Configure a Firebase Admin service account for the server using `FIREBASE_SERVICE_ACCOUNT_KEY` or Google Application Default Credentials. Never commit the service-account key.
+4. Configure `MONGODB_URI` and `MONGODB_DB` for the server-side application database.
 
 ### Step 4: Deploy Hardened Security Rules
 The file `firestore.rules` has already been authored and hardened in the root directory. Deploy it using Firebase CLI:
@@ -192,5 +200,3 @@ This application is built strictly for community engagement, grievance redressal
 - It does not conduct predictive election polling or claim to represent total voter turnout.
 - Political opinions are never linked to personal identities.
 - All administrative updates are logged in an immutable audit trail.
-=======
-# voter_feedback

@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { getMongoDb, MONGODB_COLLECTIONS } from "@/lib/mongodb";
 import { ensureMongoSeeded } from "@/lib/mongoService";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   try {
     await ensureMongoSeeded();
@@ -42,13 +44,13 @@ export async function GET() {
         admin_polls: pollsCount,
         site_content: contentCount,
       },
-      message: "MongoDB connection active and storing real Budivada village data.",
+      message: "MongoDB Atlas connected — janawaaz.in data storage active.",
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("Error in /api/db-status:", err);
     return NextResponse.json({
       connected: false,
-      error: err?.message,
+      error: err instanceof Error ? err.message : String(err),
     });
   }
 }

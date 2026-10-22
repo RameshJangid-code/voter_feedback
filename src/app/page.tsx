@@ -73,41 +73,56 @@ export default function HomePage() {
           <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:20px_20px] pointer-events-none" />
 
           <div className="relative max-w-5xl mx-auto text-center space-y-6">
-            {/* Candidate category badge */}
+            {/* Platform Badge */}
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-village-700/90 border border-emerald-400/40 text-xs sm:text-sm text-emerald-100 font-semibold shadow-md">
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
-              <span>{t.candidateCategory} • {t.villageName}</span>
+              <span>Janawaaz.in (जनआवाज़) • राजस्थान जन-संवाद एवं जनमत मंच</span>
             </div>
 
-            {/* Candidate Name */}
-            <div className="space-y-2">
-              <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-white leading-tight">
-                {content?.candidateName || t.candidateName}
+            {/* Platform Headline */}
+            <div className="space-y-3">
+              <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight text-white leading-tight font-hindi">
+                जनता की आवाज़, राजस्थान का फैसला
               </h1>
-              <p className="text-lg sm:text-2xl text-amber-300 font-semibold">
-                {language === "hi" ? "निर्दलीय सरपंच प्रत्याशी — ग्राम पंचायत बुड़ीवाड़ा" : "Independent Sarpanch Candidate — Gram Panchayat Budivada"}
+              <p className="text-base sm:text-xl text-emerald-100 max-w-3xl mx-auto font-normal leading-relaxed">
+                पूरे राजस्थान के नागरिकों की समस्याओं, सुझावों एवं चुनावी जनमत का स्वतंत्र और निष्पक्ष डिजिटल मंच।
               </p>
             </div>
 
-            {/* Candidate Photograph & Welcome Note */}
-            <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-6 max-w-2xl mx-auto bg-white/10 backdrop-blur-sm p-4 sm:p-6 rounded-3xl border border-white/20 shadow-xl">
-              <div className="relative w-32 h-32 sm:w-36 sm:h-36 rounded-full overflow-hidden border-4 border-amber-400 shadow-lg shrink-0 bg-village-950 flex items-center justify-center">
-                <Image
-                  src={content?.candidatePhotoUrl || "/images/candidate.svg"}
-                  alt="Shri Mohan Singh Ji"
-                  width={150}
-                  height={150}
-                  className="object-cover w-full h-full"
-                  priority
-                />
-              </div>
-              <div className="text-center sm:text-left space-y-2">
-                <span className="inline-block px-2.5 py-0.5 rounded-md bg-amber-400 text-village-950 text-xs font-bold uppercase tracking-wider">
-                  हमारा संकल्प
+            {/* Featured Active Poll Card for Shri Mohan Singh Ji (Budivada) */}
+            <div className="pt-2 max-w-3xl mx-auto bg-white/10 backdrop-blur-md p-5 sm:p-7 rounded-3xl border border-white/20 shadow-2xl text-left space-y-4">
+              <div className="flex items-center justify-between flex-wrap gap-2 border-b border-white/15 pb-3">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-400 text-village-950 text-xs font-black uppercase tracking-wider shadow">
+                  <Vote className="w-3.5 h-3.5 text-village-950" />
+                  <span>सक्रिय जनमत पोल (Active Poll)</span>
                 </span>
-                <p className="text-sm sm:text-base text-emerald-50 leading-relaxed font-normal">
-                  {content ? (language === "hi" ? content.bioHindi : content.bioEnglish) : t.heroSubheadline}
-                </p>
+                <span className="text-xs text-amber-200 font-semibold">
+                  ग्राम पंचायत बुड़ीवाड़ा (राजस्थान)
+                </span>
+              </div>
+
+              <div className="flex flex-col sm:flex-row items-center gap-5">
+                <div className="relative w-28 h-28 sm:w-32 sm:h-32 rounded-full overflow-hidden border-4 border-amber-400 shadow-lg shrink-0 bg-village-950 flex items-center justify-center">
+                  <Image
+                    src={content?.candidatePhotoUrl || "/images/candidate.svg"}
+                    alt="Shri Mohan Singh Ji"
+                    width={130}
+                    height={130}
+                    className="object-cover w-full h-full"
+                    priority
+                  />
+                </div>
+                <div className="text-center sm:text-left space-y-1.5 flex-1">
+                  <div className="text-2xl sm:text-3xl font-extrabold text-white">
+                    {content?.candidateName || t.candidateName}
+                  </div>
+                  <div className="text-sm font-semibold text-amber-300">
+                    {language === "hi" ? "निर्दलीय सरपंच प्रत्याशी — ग्राम पंचायत बुड़ीवाड़ा" : "Independent Sarpanch Candidate — Gram Panchayat Budivada"}
+                  </div>
+                  <p className="text-xs sm:text-sm text-emerald-50 leading-relaxed font-normal pt-1">
+                    {content ? (language === "hi" ? content.bioHindi : content.bioEnglish) : t.heroSubheadline}
+                  </p>
+                </div>
               </div>
             </div>
 
@@ -367,7 +382,7 @@ export default function HomePage() {
               <p className="text-xs text-slate-600 leading-relaxed">
                 {content?.contact.phone || t.helplinePhone}
                 <br />
-                <span className="text-[11px] text-slate-500">{content?.contact.email || "contact@budivada.in"}</span>
+                <span className="text-[11px] text-slate-500">{content?.contact.email || "contact@janawaaz.in"}</span>
               </p>
             </div>
           </div>

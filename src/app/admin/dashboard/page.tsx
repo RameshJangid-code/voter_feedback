@@ -64,7 +64,7 @@ export default function AdminDashboardPage() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.setAttribute("download", `budivada_survey_aggregate_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.setAttribute("download", `janawaaz_survey_aggregate_${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -76,7 +76,7 @@ export default function AdminDashboardPage() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.setAttribute("download", `budivada_feedback_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.setAttribute("download", `janawaaz_feedback_${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -132,7 +132,7 @@ export default function AdminDashboardPage() {
                 </span>
               </div>
               <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white mt-1">
-                बुड़ीवाड़ा जन-संवाद एवं सर्वे डैशबोर्ड
+                janawaaz.in — बुड़ीवाड़ा जन-संवाद डैशबोर्ड
               </h1>
               <p className="text-xs text-slate-400">
                 ग्रामवासियों की प्रतिक्रिया, प्राथमिकताओं एवं गोपनीय सर्वे का वास्तविक सांख्यिकीय विश्लेषण

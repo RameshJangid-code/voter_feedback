@@ -80,7 +80,7 @@ export function AdminSidebar() {
           </div>
           <div>
             <div className="text-sm font-bold">प्रशासन पैनल</div>
-            <div className="text-[10px] text-slate-400">बुड़ीवाड़ा जन-संवाद</div>
+            <div className="text-[10px] text-slate-400">janawaaz.in</div>
           </div>
         </div>
         <button
@@ -107,7 +107,7 @@ export function AdminSidebar() {
               </div>
               <div>
                 <h2 className="font-bold text-base text-white">व्यवस्थापक पैनल</h2>
-                <p className="text-xs text-village-400 font-medium">बुड़ीवाड़ा सरपंच चुनाव 2026</p>
+                <p className="text-xs text-village-400 font-medium">janawaaz.in — सरपंच चुनाव 2026</p>
               </div>
             </div>
             <div className="mt-4 px-2.5 py-1.5 rounded-lg bg-slate-800/80 border border-slate-700/80 flex items-center gap-2">

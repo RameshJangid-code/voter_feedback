@@ -33,7 +33,7 @@ export default function PrivacyPage() {
               {t.navPrivacy} (Privacy Policy)
             </h1>
             <p className="text-sm sm:text-base text-slate-600 max-w-2xl mx-auto">
-              ग्राम पंचायत बुड़ीवाड़ा जन-संवाद पोर्टल पर आपके अधिकारों और डेटा की सुरक्षा संबंधी पारदर्शी जानकारी
+              janawaaz.in (बुड़ीवाड़ा जन-संवाद पोर्टल) पर आपके अधिकारों और डेटा की सुरक्षा संबंधी पारदर्शी जानकारी
             </p>
           </div>
 

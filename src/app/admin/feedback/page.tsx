@@ -36,6 +36,9 @@ export default function AdminFeedbackPage() {
   const { user } = useAuth();
   const [feedbackList, setFeedbackList] = useState<PublicFeedback[]>([]);
   const [followupList, setFollowupList] = useState<FollowupRequest[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [feedbackLoadError, setFeedbackLoadError] = useState<string | null>(null);
+  const [followupLoadError, setFollowupLoadError] = useState<string | null>(null);
 
   // Filters
   const [searchQuery, setSearchQuery] = useState("");
@@ -59,16 +62,38 @@ export default function AdminFeedbackPage() {
   }, []);
 
   const loadData = async () => {
-    try {
-      const [fData, rData] = await Promise.all([
-        getAllFeedback(true), // load all including hidden
-        getFollowupRequests(),
-      ]);
-      setFeedbackList(fData);
-      setFollowupList(rData);
-    } catch (e) {
-      console.error("Failed to load feedback:", e);
+    setIsLoading(true);
+    setFeedbackLoadError(null);
+    setFollowupLoadError(null);
+
+    const [feedbackResult, followupResult] = await Promise.allSettled([
+      getAllFeedback(true),
+      getFollowupRequests(),
+    ]);
+
+    if (feedbackResult.status === "fulfilled") {
+      setFeedbackList(feedbackResult.value);
+    } else {
+      console.error("Failed to load feedback:", feedbackResult.reason);
+      setFeedbackLoadError(
+        feedbackResult.reason instanceof Error
+          ? feedbackResult.reason.message
+          : "समस्या सूची लोड नहीं हो सकी।"
+      );
     }
+
+    if (followupResult.status === "fulfilled") {
+      setFollowupList(followupResult.value);
+    } else {
+      console.error("Failed to load follow-up requests:", followupResult.reason);
+      setFollowupLoadError(
+        followupResult.reason instanceof Error
+          ? followupResult.reason.message
+          : "संपर्क अनुरोध लोड नहीं हो सके।"
+      );
+    }
+
+    setIsLoading(false);
   };
 
   const openEditModal = (item: PublicFeedback) => {
@@ -116,7 +141,7 @@ export default function AdminFeedbackPage() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.setAttribute("href", url);
-    link.setAttribute("download", `budivada_village_feedback_${Date.now()}.csv`);
+    link.setAttribute("download", `janawaaz_village_feedback_${Date.now()}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -243,6 +268,30 @@ export default function AdminFeedbackPage() {
             </div>
           </div>
 
+          {feedbackLoadError && (
+            <div
+              role="alert"
+              className="flex flex-col gap-3 rounded-2xl border border-rose-800 bg-rose-950/40 p-4 text-sm text-rose-200 sm:flex-row sm:items-center sm:justify-between"
+            >
+              <span>समस्या सूची लोड नहीं हो सकी: {feedbackLoadError}</span>
+              <button
+                onClick={loadData}
+                className="self-start rounded-lg border border-rose-700 px-3 py-1.5 text-xs font-semibold hover:bg-rose-900/50 sm:self-auto"
+              >
+                फिर से कोशिश करें
+              </button>
+            </div>
+          )}
+
+          {followupLoadError && !feedbackLoadError && (
+            <div
+              role="status"
+              className="rounded-2xl border border-amber-800 bg-amber-950/30 p-4 text-xs text-amber-200"
+            >
+              समस्या सूची लोड हो गई है, लेकिन संपर्क अनुरोध लोड नहीं हो सके: {followupLoadError}
+            </div>
+          )}
+
           {/* Feedback Table */}
           <div className="bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden">
             <div className="overflow-x-auto">
@@ -263,7 +312,11 @@ export default function AdminFeedbackPage() {
                   {filteredItems.length === 0 ? (
                     <tr>
                       <td colSpan={8} className="py-8 text-center text-slate-500">
-                        कोई मेल खाती प्रविष्टि नहीं मिली।
+                        {isLoading
+                          ? "समस्याएं लोड हो रही हैं..."
+                          : feedbackLoadError
+                            ? "समस्या सूची उपलब्ध नहीं है। ऊपर दिया गया संदेश देखें।"
+                            : "कोई मेल खाती प्रविष्टि नहीं मिली।"}
                       </td>
                     </tr>
                   ) : (

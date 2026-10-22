@@ -203,13 +203,10 @@ export interface AggregateStats {
 
 export interface PostVoteDetail {
   id: string;
-  relatedSurveyId?: string;
-  /** The poll this voter participated in (pollId) */
-  pollId?: string;
-  /** The option they chose (optionId like "opt-yes" or "opt-no") */
-  pollOptionId?: string;
-  /** Human-readable vote choice label in Hindi */
-  voteChoiceLabel?: string;
+  relatedSurveyId?: string;   // optional link to the anonymous opinion responseId
+  pollId?: string;            // which poll was voted on
+  pollOptionId?: string;      // which option was chosen (for admin reference only)
+  voteChoiceLabel?: string;   // human-readable label e.g. "हाँ (समर्थन पर विचार)"
   fullName?: string;
   fatherName?: string;
   mobileNumber?: string;
@@ -238,4 +235,3 @@ export interface PollItem {
   totalVotes?: number;
   isDefault?: boolean;
 }
-

@@ -82,7 +82,7 @@ export default function AdminPollsPage() {
   }, []);
 
   const handleAddOption = () => {
-    if (options.length < 6) {
+    if (options.length < 2) {
       setOptions([...options, { textHi: "", textEn: "" }]);
     }
   };
@@ -125,7 +125,7 @@ export default function AdminPollsPage() {
           options: filledOptions,
           setActive: makeActiveImmediately,
         },
-        user?.email || "admin@budivada.in"
+        user?.email || "admin@janawaaz.in"
       );
 
       setSuccessMsg("नया पोल सफलतापूर्वक बना दिया गया है!");
@@ -151,7 +151,7 @@ export default function AdminPollsPage() {
 
   const handleSetActive = async (pollId: string) => {
     try {
-      await setActivePoll(pollId, user?.email || "admin@budivada.in");
+      await setActivePoll(pollId, user?.email || "admin@janawaaz.in");
       await loadAll();
       setSuccessMsg("सक्रिय पोल अपडेट कर दिया गया है।");
       setTimeout(() => setSuccessMsg(null), 3000);
@@ -162,7 +162,7 @@ export default function AdminPollsPage() {
 
   const handleToggle = async (pollId: string) => {
     try {
-      await togglePollStatus(pollId, user?.email || "admin@budivada.in");
+      await togglePollStatus(pollId, user?.email || "admin@janawaaz.in");
       await loadAll();
     } catch (err) {
       console.error("Error toggling poll:", err);
@@ -172,7 +172,7 @@ export default function AdminPollsPage() {
   const handleDelete = async (pollId: string) => {
     if (!confirm("क्या आप वाकई इस पोल को हटाना चाहते हैं?")) return;
     try {
-      const res = await deletePoll(pollId, user?.email || "admin@budivada.in");
+      const res = await deletePoll(pollId, user?.email || "admin@janawaaz.in");
       if (res) {
         await loadAll();
         setSuccessMsg("पोल सफलतापूर्वक हटा दिया गया है।");
@@ -191,7 +191,7 @@ export default function AdminPollsPage() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.setAttribute("download", `budivada_registered_voters_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.setAttribute("download", `janawaaz_registered_voters_${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -204,7 +204,7 @@ export default function AdminPollsPage() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.setAttribute("download", `budivada_votes_overview_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.setAttribute("download", `janawaaz_votes_overview_${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -572,7 +572,6 @@ export default function AdminPollsPage() {
                       <th className="px-4 py-3">पिता का नाम</th>
                       <th className="px-4 py-3">मोबाइल नंबर</th>
                       <th className="px-4 py-3">मोहल्ला / वार्ड</th>
-                      <th className="px-4 py-3">वोट (मत)</th>
                       <th className="px-4 py-3">अन्य टिप्पणी</th>
                       <th className="px-4 py-3">दिनांक</th>
                     </tr>
@@ -619,23 +618,6 @@ export default function AdminPollsPage() {
                               </span>
                             ) : (
                               "—"
-                            )}
-                          </td>
-                          {/* Vote Choice Column */}
-                          <td className="px-4 py-3.5">
-                            {v.voteChoiceLabel ? (
-                              <span
-                                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold ${
-                                  v.voteChoiceLabel.includes("हाँ")
-                                    ? "bg-emerald-900/50 text-emerald-300 border border-emerald-700"
-                                    : "bg-slate-800 text-slate-300 border border-slate-700"
-                                }`}
-                              >
-                                {v.voteChoiceLabel.includes("हाँ") ? <Check className="w-3 h-3" /> : <span>✕</span>}
-                                <span>{v.voteChoiceLabel.includes("हाँ") ? "हाँ" : "नहीं"}</span>
-                              </span>
-                            ) : (
-                              <span className="text-slate-500 text-[11px]">—</span>
                             )}
                           </td>
                           <td className="px-4 py-3.5 text-slate-400 max-w-xs truncate">
@@ -730,9 +712,9 @@ export default function AdminPollsPage() {
                   <div className="space-y-2 pt-2 border-t border-slate-800">
                     <div className="flex items-center justify-between">
                       <label className="block text-xs font-bold text-slate-200">
-                        मतदान विकल्प (कम से कम 2 विकल्प) *
+                        मतदान विकल्प (हाँ/समर्थन और नहीं/असहमति) *
                       </label>
-                      {options.length < 6 && (
+                      {options.length < 2 && (
                         <button
                           type="button"
                           onClick={handleAddOption}

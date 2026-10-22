@@ -8,6 +8,8 @@ import {
 } from "@/lib/mongoService";
 import { VoteChoice, AnonymousOpinion } from "@/types";
 
+export const dynamic = "force-dynamic";
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -18,8 +20,6 @@ export async function POST(req: NextRequest) {
       biggestExpectation,
       noReasonPredefined,
       noReasonCustom,
-      pollId: clientPollId,
-      optionId: clientOptionId,
     } = body;
 
     // Strict PII rejection: No personal identifiers permitted in anonymous survey
@@ -81,32 +81,26 @@ export async function POST(req: NextRequest) {
 
     // Increment the poll's totalVotes and the chosen option's votesCount in MongoDB
     // Determine which poll and option to increment
-    let targetPollId = clientPollId;
-    let targetOptionId = clientOptionId;
+    const activePoll = await mongoGetActivePoll();
+    const yesOption = activePoll.options.find(
+      (option) =>
+        option.id === "opt-yes" ||
+        option.textHi.includes("हाँ") ||
+        option.textEn.toLowerCase().includes("yes")
+    );
+    const noOption = activePoll.options.find(
+      (option) =>
+        option.id === "opt-no" ||
+        option.textHi.includes("नहीं") ||
+        option.textEn.toLowerCase().includes("no")
+    );
+    const targetPollId = activePoll.id;
+    const targetOptionId =
+      resolvedChoice === "yes"
+        ? yesOption?.id || activePoll.options[0]?.id
+        : noOption?.id || activePoll.options[1]?.id;
 
-    if (!targetPollId) {
-      // Get the currently active poll
-      const activePoll = await mongoGetActivePoll();
-      if (activePoll) {
-        targetPollId = activePoll.id;
-        // Map yes/no to the poll's option id
-        if (!targetOptionId) {
-          // For the default election poll: opt-yes maps to "yes", opt-no to "no"
-          const yesOption = activePoll.options.find(
-            (o) => o.id === "opt-yes" || o.textHi.includes("हाँ") || o.textEn.toLowerCase().includes("yes")
-          );
-          const noOption = activePoll.options.find(
-            (o) => o.id === "opt-no" || o.textHi.includes("नहीं") || o.textEn.toLowerCase().includes("no")
-          );
-          targetOptionId =
-            resolvedChoice === "yes"
-              ? yesOption?.id || activePoll.options[0]?.id
-              : noOption?.id || activePoll.options[1]?.id;
-        }
-      }
-    }
-
-    if (targetPollId && targetOptionId) {
+    if (targetOptionId) {
       await mongoVoteOnPoll(targetPollId, targetOptionId);
     }
 
@@ -137,6 +131,6 @@ export async function GET() {
     });
   } catch (err: unknown) {
     console.error("Error fetching survey count:", err);
-    return NextResponse.json({ publicSurveyCount: 0 });
+    return NextResponse.json({ error: "Failed to fetch survey count" }, { status: 500 });
   }
 }

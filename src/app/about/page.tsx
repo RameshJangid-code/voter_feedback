@@ -33,13 +33,16 @@ export default function AboutPage() {
           <div className="text-center space-y-3">
             <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-village-100 text-village-800 text-xs font-semibold border border-village-200">
               <Shield className="w-3.5 h-3.5 text-village-700" />
-              <span>प्रत्याशी दृष्टिकोण एवं परिचय</span>
+              <span>Janawaaz.in • सक्रिय जनमत पोल प्रत्याशी परिचय</span>
             </div>
             <h1 className="text-3xl sm:text-5xl font-extrabold text-slate-900 tracking-tight font-hindi">
               {content?.candidateName || t.candidateName}
             </h1>
             <p className="text-lg text-village-700 font-semibold">
-              {content?.candidateCategory || t.candidateCategory} • {content?.village || t.villageName}
+              {content?.candidateCategory || t.candidateCategory} • {content?.village || t.villageName} (राजस्थान)
+            </p>
+            <p className="text-xs sm:text-sm text-slate-500 max-w-2xl mx-auto">
+              janawaaz.in राजस्थान के नागरिकों के लिए एक स्वतंत्र जनमत व जन-संवाद मंच है। वर्तमान में ग्राम पंचायत बुड़ीवाड़ा के सरपंच चुनाव का आधिकारिक जनमत सर्वेक्षण यहाँ संचालित है।
             </p>
           </div>
 

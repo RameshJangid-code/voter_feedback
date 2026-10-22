@@ -63,7 +63,7 @@ export const defaultSiteContent: SiteContent = {
     addressHi: "जन-संपर्क केंद्र: मुख्य बस स्टैंड तिराहा, ग्राम पंचायत बुड़ीवाड़ा",
     addressEn: "Public Contact Center: Main Bus Stand Junction, Gram Panchayat Budivada",
     phone: "+91 98290 XXXXX",
-    email: "contact@budivada-sarpanch.in",
+    email: "contact@janawaaz.in",
     visitingHoursHi: "सोमवार से शनिवार: प्रातः 8:00 से 11:30 बजे | सायं 5:00 से 8:30 बजे",
     visitingHoursEn: "Monday to Saturday: 8:00 AM - 11:30 AM | 5:00 PM - 8:30 PM",
   },

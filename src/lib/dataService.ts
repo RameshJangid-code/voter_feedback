@@ -19,20 +19,18 @@ import { defaultSiteContent } from "./initialContent";
 import {
   demoPublicFeedback,
   demoFollowups,
-  demoAnonymousOpinions,
-  demoPostVoteDetails,
   demoPolls,
   EXPECTATION_OPTIONS,
 } from "./seedData";
 
 import { isFirebaseConfigured, db } from "./firebase";
+import { adminApiFetch, throwForApiError } from "./adminApi";
 import {
   collection,
   getDocs,
   doc,
   setDoc,
   getDoc,
-  updateDoc,
   query,
   orderBy,
   where,
@@ -45,8 +43,8 @@ const STORAGE_KEYS = {
   OPINIONS: "budivada_anonymous_opinions_v1",
   CONTENT: "budivada_site_content_v1",
   LOGS: "budivada_audit_logs_v1",
-  POST_VOTE_DETAILS: "budivada_post_vote_details_v1",
   POLLS: "budivada_admin_polls_v1",
+  POST_VOTE_DETAILS: "janawaaz_post_vote_details_v1",
 };
 
 // In-memory fallback if server-side rendering or localStorage not available
@@ -99,7 +97,10 @@ function setLocalItem<T>(key: string, data: T) {
 export async function getAllFeedback(includePrivate = false): Promise<PublicFeedback[]> {
   if (typeof window !== "undefined") {
     try {
-      const res = await fetch(`/api/feedback?all=${includePrivate}`);
+      const res = includePrivate
+        ? await adminApiFetch(`/api/feedback?all=true`)
+        : await fetch("/api/feedback");
+      if (includePrivate) await throwForApiError(res);
       if (res.ok) {
         const data = await res.json();
         if (data.feedback && Array.isArray(data.feedback)) {
@@ -107,8 +108,8 @@ export async function getAllFeedback(includePrivate = false): Promise<PublicFeed
           return data.feedback;
         }
       }
-    } catch {
-      // fallback
+    } catch (error) {
+      if (includePrivate) throw error;
     }
   }
 
@@ -153,25 +154,18 @@ export async function submitPublicFeedback(params: {
     consentToContact: boolean;
   };
 }): Promise<{ feedbackId: string; followupId?: string }> {
-  let feedbackId = `fb-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
-  let followupId: string | undefined;
-
-  if (typeof window !== "undefined") {
-    try {
-      const res = await fetch("/api/feedback", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(params),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.feedbackId) feedbackId = data.feedbackId;
-        if (data.followupId) followupId = data.followupId;
-      }
-    } catch (e) {
-      console.warn("API save feedback failed, falling back to local:", e);
-    }
+  const res = await fetch("/api/feedback", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(params),
+  });
+  await throwForApiError(res);
+  const data = await res.json();
+  if (typeof data.feedbackId !== "string") {
+    throw new Error("Feedback API returned an invalid response.");
   }
+  const feedbackId = data.feedbackId as string;
+  const followupId = data.followupId as string | undefined;
 
   const timestamp = new Date().toISOString();
   const newFeedback: PublicFeedback = {
@@ -193,8 +187,7 @@ export async function submitPublicFeedback(params: {
 
   // Stored strictly in separate followup_requests collection if consented
   if (params.followup && params.followup.consentToContact) {
-
-    followupId = `req-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+    if (!followupId) throw new Error("Contact follow-up was not saved by the server.");
     const newFollowup: FollowupRequest = {
       requestId: followupId,
       relatedFeedbackId: feedbackId,
@@ -213,25 +206,10 @@ export async function submitPublicFeedback(params: {
       isDemo: false,
     };
 
-    if (isFirebaseConfigured && db) {
-      try {
-        await setDoc(doc(db, "followup_requests", followupId), newFollowup);
-      } catch (e) {
-        console.warn("Firestore save followup failed, saving locally:", e);
-      }
-    }
     const currentFollowups = getLocalItem<FollowupRequest[]>(STORAGE_KEYS.FOLLOWUPS, memFollowups);
     currentFollowups.unshift(newFollowup);
     setLocalItem(STORAGE_KEYS.FOLLOWUPS, currentFollowups);
     memFollowups = currentFollowups;
-  }
-
-  if (isFirebaseConfigured && db) {
-    try {
-      await setDoc(doc(db, "public_feedback", feedbackId), newFeedback);
-    } catch (e) {
-      console.warn("Firestore save feedback failed, saving locally:", e);
-    }
   }
 
   const currentFeedback = getLocalItem<PublicFeedback[]>(STORAGE_KEYS.FEEDBACK, memFeedback);
@@ -260,72 +238,27 @@ export async function submitContactRequest(params: {
     throw new Error("सहमति चेकबॉक्स अनिवार्य है।");
   }
 
-  const timestamp = new Date().toISOString();
-  const requestId = `req-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
-
-  const newRequest: FollowupRequest = {
-    requestId,
-    fullName: params.fullName.trim(),
-    contactName: params.fullName.trim(),
-    fatherName: params.fatherName?.trim() || "",
-    mobileNumber: params.mobileNumber.trim(),
-    contactPhone: params.mobileNumber.trim(),
-    locality: params.locality?.trim() || "",
-    ward: params.locality?.trim() || "",
-    preferredContactMethod: params.preferredContactMethod || "phone",
-    subjectOrProblem: params.subjectOrProblem?.trim() || "",
-    consentToContact: true,
-    status: "new",
-    adminNotes: "",
-    createdAt: timestamp,
-    isDemo: false,
-  };
-
-  if (isFirebaseConfigured && db) {
-    try {
-      await setDoc(doc(db, "followup_requests", requestId), newRequest);
-    } catch (e) {
-      console.warn("Firestore save contact request failed, saving locally:", e);
-    }
-  }
-
-  const current = getLocalItem<FollowupRequest[]>(STORAGE_KEYS.FOLLOWUPS, memFollowups);
-  current.unshift(newRequest);
-  setLocalItem(STORAGE_KEYS.FOLLOWUPS, current);
-  memFollowups = current;
-
-  return { requestId };
+  const response = await fetch("/api/contact", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(params),
+  });
+  await throwForApiError(response);
+  return response.json();
 }
 
 export async function getContactRequests(): Promise<FollowupRequest[]> {
   if (typeof window !== "undefined") {
-    try {
-      const res = await fetch("/api/contact");
-      if (res.ok) {
-        const data = await res.json();
-        if (data.contacts && Array.isArray(data.contacts)) {
-          setLocalItem(STORAGE_KEYS.FOLLOWUPS, data.contacts);
-          return data.contacts;
-        }
-      }
-    } catch {
-      // fallback
+    const res = await adminApiFetch("/api/contact");
+    await throwForApiError(res);
+    const data = await res.json();
+    if (data.contacts && Array.isArray(data.contacts)) {
+      setLocalItem(STORAGE_KEYS.FOLLOWUPS, data.contacts);
+      return data.contacts;
     }
   }
 
-  if (isFirebaseConfigured && db) {
-    try {
-      const colRef = collection(db, "followup_requests");
-      const q = query(colRef, orderBy("createdAt", "desc"));
-      const snapshot = await getDocs(q);
-      const items: FollowupRequest[] = [];
-      snapshot.forEach((d) => items.push(d.data() as FollowupRequest));
-      if (items.length > 0) return items;
-    } catch (err) {
-      console.warn("Firestore read contact requests failed:", err);
-    }
-  }
-  return getLocalItem<FollowupRequest[]>(STORAGE_KEYS.FOLLOWUPS, memFollowups);
+  return [];
 }
 
 
@@ -341,22 +274,15 @@ export async function updateContactRequestStatus(
   const index = all.findIndex((r) => r.requestId === requestId);
   if (index === -1) return null;
 
-  const updated: FollowupRequest = {
-    ...all[index],
-    status: updates.status,
-    adminNotes: updates.adminNotes !== undefined ? updates.adminNotes : all[index].adminNotes,
-  };
+  const response = await adminApiFetch("/api/contact", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ requestId, ...updates }),
+  });
+  await throwForApiError(response);
+
+  const updated: FollowupRequest = { ...all[index], ...updates };
   all[index] = updated;
-
-  if (isFirebaseConfigured && db) {
-    try {
-      const docRef = doc(db, "followup_requests", requestId);
-      await updateDoc(docRef, { status: updates.status, adminNotes: updated.adminNotes });
-    } catch (e) {
-      console.warn("Firestore update contact request failed:", e);
-    }
-  }
-
   setLocalItem(STORAGE_KEYS.FOLLOWUPS, all);
   memFollowups = all;
 
@@ -387,21 +313,16 @@ export async function submitAnonymousSurvey(params: {
   let optionId: string | undefined;
 
   if (typeof window !== "undefined") {
-    try {
-      const res = await fetch("/api/opinion", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(params),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.responseId) responseId = data.responseId;
-        if (data.pollId) pollId = data.pollId;
-        if (data.optionId) optionId = data.optionId;
-      }
-    } catch {
-      // fallback
-    }
+    const res = await fetch("/api/opinion", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(params),
+    });
+    await throwForApiError(res);
+    const data = await res.json();
+    if (data.responseId) responseId = data.responseId;
+    if (data.pollId) pollId = data.pollId;
+    if (data.optionId) optionId = data.optionId;
   }
 
   const newOpinion: AnonymousOpinion = {
@@ -415,14 +336,6 @@ export async function submitAnonymousSurvey(params: {
     createdAt: timestamp,
     isDemo: false, // strictly marked as real submission
   };
-
-  if (isFirebaseConfigured && db) {
-    try {
-      await setDoc(doc(db, "anonymous_opinions", responseId), newOpinion);
-    } catch (e) {
-      console.warn("Firestore save survey failed, saving locally:", e);
-    }
-  }
 
   const currentOpinions = getLocalItem<AnonymousOpinion[]>(STORAGE_KEYS.OPINIONS, memOpinions);
   currentOpinions.unshift(newOpinion);
@@ -660,6 +573,15 @@ export async function getAggregateStats(): Promise<AggregateStats> {
 // Site Content Service (CMS)
 // -------------------------------------------------------------
 export async function getSiteContent(): Promise<SiteContent> {
+  if (typeof window !== "undefined") {
+    try {
+      const response = await fetch("/api/content");
+      if (response.ok) return (await response.json()) as SiteContent;
+    } catch (error) {
+      console.error("Failed to load site content from API:", error);
+    }
+  }
+
   if (isFirebaseConfigured && db) {
     try {
       const docRef = doc(db, "site_content", "main_content");
@@ -678,22 +600,13 @@ export async function updateSiteContent(
   newContent: Partial<SiteContent>,
   adminEmail: string
 ): Promise<SiteContent> {
-  const current = await getSiteContent();
-  const updated: SiteContent = {
-    ...current,
-    ...newContent,
-    updatedAt: new Date().toISOString(),
-  };
-
-  if (isFirebaseConfigured && db) {
-    try {
-      const docRef = doc(db, "site_content", "main_content");
-      await setDoc(docRef, updated, { merge: true });
-    } catch (e) {
-      console.warn("Firestore update content failed:", e);
-    }
-  }
-
+  const response = await adminApiFetch("/api/content", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ updates: newContent }),
+  });
+  await throwForApiError(response);
+  const updated = (await response.json()) as SiteContent;
   setLocalItem(STORAGE_KEYS.CONTENT, updated);
   memContent = updated;
 
@@ -725,20 +638,18 @@ export async function updateFeedbackItem(
   const index = all.findIndex((f) => f.feedbackId === feedbackId);
   if (index === -1) return null;
 
+  const response = await adminApiFetch("/api/feedback", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ feedbackId, updates }),
+  });
+  await throwForApiError(response);
+
   const updatedItem: PublicFeedback = {
     ...all[index],
     ...updates,
   };
   all[index] = updatedItem;
-
-  if (isFirebaseConfigured && db) {
-    try {
-      const docRef = doc(db, "public_feedback", feedbackId);
-      await updateDoc(docRef, updates);
-    } catch (e) {
-      console.warn("Firestore update feedback failed:", e);
-    }
-  }
 
   setLocalItem(STORAGE_KEYS.FEEDBACK, all);
   memFeedback = all;
@@ -903,10 +814,6 @@ export function generateSurveyAggregateCSV(stats: AggregateStats): string {
   return lines.join("\n");
 }
 
-// -------------------------------------------------------------
-// Post-Vote Optional Voter Details Service
-// (Voluntary details after voting - strictly decoupled from vote preference)
-// -------------------------------------------------------------
 export async function submitPostVoteDetail(params: {
   relatedSurveyId?: string;
   pollId?: string;
@@ -931,8 +838,8 @@ export async function submitPostVoteDetail(params: {
         const data = await res.json();
         if (data.id) id = data.id;
       }
-    } catch {
-      // fallback
+    } catch (e) {
+      console.warn("Save voter detail fallback:", e);
     }
   }
 
@@ -952,14 +859,6 @@ export async function submitPostVoteDetail(params: {
     isDemo: false,
   };
 
-  if (isFirebaseConfigured && db) {
-    try {
-      await setDoc(doc(db, "post_vote_details", id), newDetail);
-    } catch (e) {
-      console.warn("Firestore save post-vote detail failed, saving locally:", e);
-    }
-  }
-
   const all = getLocalItem<PostVoteDetail[]>(STORAGE_KEYS.POST_VOTE_DETAILS, memPostVoteDetails);
   all.unshift(newDetail);
   setLocalItem(STORAGE_KEYS.POST_VOTE_DETAILS, all);
@@ -968,36 +867,16 @@ export async function submitPostVoteDetail(params: {
   return { id };
 }
 
-
 export async function getPostVoteDetails(): Promise<PostVoteDetail[]> {
   if (typeof window !== "undefined") {
-    try {
-      const res = await fetch("/api/voters");
-      if (res.ok) {
-        const data = await res.json();
-        if (data.voters && Array.isArray(data.voters)) {
-          setLocalItem(STORAGE_KEYS.POST_VOTE_DETAILS, data.voters);
-          return data.voters;
-        }
-      }
-    } catch {
-      // fallback
+    const res = await adminApiFetch("/api/voters");
+    await throwForApiError(res);
+    const data = await res.json();
+    if (data.voters && Array.isArray(data.voters)) {
+      return data.voters;
     }
   }
-
-  if (isFirebaseConfigured && db) {
-    try {
-      const colRef = collection(db, "post_vote_details");
-      const q = query(colRef, orderBy("createdAt", "desc"));
-      const snapshot = await getDocs(q);
-      const items: PostVoteDetail[] = [];
-      snapshot.forEach((d) => items.push(d.data() as PostVoteDetail));
-      if (items.length > 0) return items;
-    } catch (err) {
-      console.warn("Firestore read post-vote details failed, using fallback:", err);
-    }
-  }
-  return getLocalItem<PostVoteDetail[]>(STORAGE_KEYS.POST_VOTE_DETAILS, memPostVoteDetails);
+  return [];
 }
 
 export function generatePostVoteDetailsCSV(details: PostVoteDetail[]): string {
@@ -1007,7 +886,6 @@ export function generatePostVoteDetailsCSV(details: PostVoteDetail[]): string {
     "Father's Name (पिता का नाम)",
     "Mobile Number (मोबाइल)",
     "Ward / Locality (वार्ड/मोहल्ला)",
-    "Vote Choice (मत विकल्प)",
     "Additional Notes (अन्य विवरण)",
     "Submitted Date (दिनांक)",
   ];
@@ -1024,7 +902,6 @@ export function generatePostVoteDetailsCSV(details: PostVoteDetail[]): string {
     escapeCSV(d.fatherName || "—"),
     escapeCSV(d.mobileNumber || "—"),
     escapeCSV(d.locality || "—"),
-    escapeCSV(d.voteChoiceLabel || "—"),
     escapeCSV(d.notes || "—"),
     escapeCSV(new Date(d.createdAt).toLocaleDateString("hi-IN")),
   ]);
@@ -1038,40 +915,22 @@ export function generatePostVoteDetailsCSV(details: PostVoteDetail[]): string {
 // -------------------------------------------------------------
 export async function getAllPolls(): Promise<PollItem[]> {
   if (typeof window !== "undefined") {
-    try {
-      const res = await fetch("/api/polls");
-      if (res.ok) {
-        const data = await res.json();
-        if (data.polls && Array.isArray(data.polls)) {
-          setLocalItem(STORAGE_KEYS.POLLS, data.polls);
-          return data.polls;
-        }
-      }
-    } catch {
-      // fallback
+    const res = await adminApiFetch("/api/polls");
+    await throwForApiError(res);
+    const data = await res.json();
+    if (data.polls && Array.isArray(data.polls)) {
+      setLocalItem(STORAGE_KEYS.POLLS, data.polls);
+      return data.polls;
     }
   }
 
-  if (isFirebaseConfigured && db) {
-    try {
-      const colRef = collection(db, "admin_polls");
-      const snapshot = await getDocs(colRef);
-      const items: PollItem[] = [];
-      snapshot.forEach((d) => items.push(d.data() as PollItem));
-      if (items.length > 0) {
-        return items.sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
-      }
-    } catch (err) {
-      console.warn("Firestore read polls failed, using fallback:", err);
-    }
-  }
-  return getLocalItem<PollItem[]>(STORAGE_KEYS.POLLS, memPolls);
+  return [];
 }
 
 export async function getActivePoll(): Promise<PollItem> {
   if (typeof window !== "undefined") {
     try {
-      const res = await fetch("/api/polls");
+      const res = await fetch("/api/polls/active");
       if (res.ok) {
         const data = await res.json();
         if (data.activePoll) {
@@ -1083,10 +942,10 @@ export async function getActivePoll(): Promise<PollItem> {
     }
   }
 
-  const polls = await getAllPolls();
-  const active = polls.find((p) => p.isActive);
-  if (active) return active;
-  return polls[0] || demoPolls[0];
+  const polls = getLocalItem<PollItem[]>(STORAGE_KEYS.POLLS, memPolls);
+  return polls.find((poll) => poll.isActive && poll.options.length === 2) ||
+    demoPolls.find((poll) => poll.isActive && poll.options.length === 2) ||
+    demoPolls[0];
 }
 
 export async function createPoll(
@@ -1100,71 +959,22 @@ export async function createPoll(
   },
   adminEmail: string
 ): Promise<PollItem> {
-  if (typeof window !== "undefined") {
-    try {
-      await fetch("/api/polls", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(params),
-      });
-    } catch {
-      // fallback
-    }
-  }
-
-  const timestamp = new Date().toISOString();
-  const pollId = `poll-${Date.now()}-${Math.random().toString(36).substring(2, 5)}`;
-
-  const newPoll: PollItem = {
-    id: pollId,
-    titleHi: params.titleHi.trim(),
-    titleEn: params.titleEn.trim() || params.titleHi.trim(),
-    descriptionHi: params.descriptionHi?.trim() || "",
-    descriptionEn: params.descriptionEn?.trim() || "",
-    isActive: Boolean(params.setActive),
-    isDefault: false,
-    createdAt: timestamp,
-    totalVotes: 0,
-    options: params.options.map((opt, idx) => ({
-      id: `opt-${pollId}-${idx + 1}`,
-      textHi: opt.textHi.trim(),
-      textEn: opt.textEn.trim() || opt.textHi.trim(),
-      votesCount: 0,
-    })),
-  };
-
-  const polls = await getAllPolls();
-
-  if (newPoll.isActive) {
-    polls.forEach((p) => {
-      p.isActive = false;
-    });
-  }
-
-  polls.unshift(newPoll);
-
-  if (isFirebaseConfigured && db) {
-    try {
-      await setDoc(doc(db, "admin_polls", pollId), newPoll);
-      if (newPoll.isActive) {
-        for (const p of polls) {
-          if (p.id !== pollId) {
-            await setDoc(doc(db, "admin_polls", p.id), p);
-          }
-        }
-      }
-    } catch (e) {
-      console.warn("Firestore save poll failed, saving locally:", e);
-    }
-  }
-
+  const response = await adminApiFetch("/api/polls", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(params),
+  });
+  await throwForApiError(response);
+  const result = await response.json();
+  const newPoll = result.poll as PollItem;
+  const polls = [newPoll, ...(await getAllPolls()).filter((poll) => poll.id !== newPoll.id)];
   setLocalItem(STORAGE_KEYS.POLLS, polls);
   memPolls = polls;
 
   await recordAuditLog({
     adminEmail,
     action: "CREATE_POLL",
-    targetId: pollId,
+    targetId: newPoll.id,
     details: `Created new poll: ${newPoll.titleHi} (Active: ${newPoll.isActive})`,
   });
 
@@ -1172,29 +982,13 @@ export async function createPoll(
 }
 
 export async function setActivePoll(pollId: string, adminEmail: string): Promise<void> {
-  if (typeof window !== "undefined") {
-    try {
-      await fetch("/api/polls", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pollId, action: "setActive" }),
-      });
-    } catch {
-      // fallback
-    }
-  }
-
-  const polls = await getAllPolls();
-  for (const p of polls) {
-    p.isActive = p.id === pollId;
-    if (isFirebaseConfigured && db) {
-      try {
-        await updateDoc(doc(db, "admin_polls", p.id), { isActive: p.isActive });
-      } catch (e) {
-        console.warn("Firestore update poll failed:", e);
-      }
-    }
-  }
+  const response = await adminApiFetch("/api/polls", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ pollId, action: "setActive" }),
+  });
+  await throwForApiError(response);
+  const polls = (await getAllPolls()).map((poll) => ({ ...poll, isActive: poll.id === pollId }));
   setLocalItem(STORAGE_KEYS.POLLS, polls);
   memPolls = polls;
 
@@ -1207,31 +1001,17 @@ export async function setActivePoll(pollId: string, adminEmail: string): Promise
 }
 
 export async function togglePollStatus(pollId: string, adminEmail: string): Promise<void> {
-  if (typeof window !== "undefined") {
-    try {
-      await fetch("/api/polls", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pollId, action: "toggle" }),
-      });
-    } catch {
-      // fallback
-    }
-  }
-
+  const response = await adminApiFetch("/api/polls", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ pollId, action: "toggle" }),
+  });
+  await throwForApiError(response);
   const polls = await getAllPolls();
   const poll = polls.find((p) => p.id === pollId);
   if (!poll) return;
 
   poll.isActive = !poll.isActive;
-
-  if (isFirebaseConfigured && db) {
-    try {
-      await updateDoc(doc(db, "admin_polls", pollId), { isActive: poll.isActive });
-    } catch (e) {
-      console.warn("Firestore toggle poll failed:", e);
-    }
-  }
 
   setLocalItem(STORAGE_KEYS.POLLS, polls);
   memPolls = polls;
@@ -1245,26 +1025,17 @@ export async function togglePollStatus(pollId: string, adminEmail: string): Prom
 }
 
 export async function deletePoll(pollId: string, adminEmail: string): Promise<boolean> {
-  if (typeof window !== "undefined") {
-    try {
-      const res = await fetch(`/api/polls?pollId=${pollId}`, {
-        method: "DELETE",
-      });
-      if (res.ok) {
-        // deleted in MongoDB
-      }
-    } catch {
-      // fallback
-    }
-  }
+  const pollsBeforeDelete = await getAllPolls();
+  const target = pollsBeforeDelete.find((poll) => poll.id === pollId);
+  if (!target || target.isDefault) return false;
 
-  const polls = await getAllPolls();
-  const target = polls.find((p) => p.id === pollId);
-  if (!target || target.isDefault) {
-    return false; // Cannot delete default poll
-  }
+  const response = await adminApiFetch(`/api/polls?pollId=${encodeURIComponent(pollId)}`, {
+    method: "DELETE",
+  });
+  if (response.status === 400) return false;
+  await throwForApiError(response);
 
-  const filtered = polls.filter((p) => p.id !== pollId);
+  const filtered = pollsBeforeDelete.filter((p) => p.id !== pollId);
   if (target.isActive && filtered.length > 0) {
     filtered[0].isActive = true;
   }
@@ -1281,5 +1052,3 @@ export async function deletePoll(pollId: string, adminEmail: string): Promise<bo
 
   return true;
 }
-
-

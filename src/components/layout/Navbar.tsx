@@ -46,8 +46,8 @@ export function Navbar() {
             <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
             <span className="font-medium">
               {language === "hi"
-                ? "ग्राम पंचायत बुड़ीवाड़ा — निष्पक्ष, पारदर्शी एवं जन-सहभागिता मंच"
-                : "Gram Panchayat Budivada — Transparent Community Feedback Portal"}
+                ? "janawaaz.in — राजस्थान का स्वतंत्र जन-संवाद एवं जनमत मंच"
+                : "janawaaz.in — Rajasthan Independent Public Opinion Platform"}
             </span>
           </div>
           <div className="flex items-center gap-4">
@@ -65,24 +65,22 @@ export function Navbar() {
       {/* Main Navbar */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-20">
-          {/* Logo & Candidate Identity */}
+          {/* Logo & Platform Identity */}
           <Link href="/" className="flex items-center gap-3 group">
-            <div className="w-12 h-12 rounded-xl bg-village-700 text-white flex items-center justify-center font-bold text-xl shadow-md group-hover:bg-village-800 transition-colors border border-village-600">
-              म
+            <div className="w-12 h-12 rounded-xl bg-village-700 text-white flex items-center justify-center font-extrabold text-2xl shadow-md group-hover:bg-village-800 transition-colors border border-village-600">
+              ज
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 group-hover:text-village-800 transition-colors">
-                  {t.candidateName}
+                <span className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 group-hover:text-village-800 transition-colors">
+                  Janawaaz<span className="text-village-700">.in</span>
                 </span>
-                <span className="hidden sm:inline-flex px-2 py-0.5 rounded text-[11px] font-semibold bg-village-100 text-village-800 border border-village-200">
-                  {t.candidateCategory}
+                <span className="inline-flex px-2 py-0.5 rounded text-[11px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
+                  {language === "hi" ? "राजस्थान" : "Rajasthan"}
                 </span>
               </div>
               <p className="text-xs text-slate-500 font-medium flex items-center gap-1">
-                <span>{t.villageName}</span>
-                <span className="text-slate-300">•</span>
-                <span className="text-village-700 font-semibold">जन-संवाद पोर्टल</span>
+                <span>{language === "hi" ? "स्वतंत्र जनमत एवं जन-संवाद पोर्टल" : "Public Opinion & Feedback Portal"}</span>
               </p>
             </div>
           </Link>
@@ -157,9 +155,9 @@ export function Navbar() {
       {/* Mobile Drawer Menu */}
       {mobileMenuOpen && (
         <div className="lg:hidden border-t border-slate-200 bg-white px-4 pt-3 pb-6 shadow-xl space-y-2">
-          <div className="px-2 py-1 mb-2 bg-village-50 rounded-lg border border-village-200">
-            <p className="text-xs font-semibold text-village-900">{t.candidateName}</p>
-            <p className="text-[11px] text-village-700">{t.candidateCategory} • {t.villageName}</p>
+          <div className="px-3 py-2 mb-2 bg-village-50 rounded-xl border border-village-200">
+            <p className="text-sm font-bold text-village-950">Janawaaz.in (जनआवाज़)</p>
+            <p className="text-[11px] text-village-700">राजस्थान का स्वतंत्र जनमत एवं जन-संवाद मंच</p>
           </div>
 
           {navLinks.map((link) => {

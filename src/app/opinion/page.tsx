@@ -37,23 +37,18 @@ import {
   PhoneCall,
   Home,
   BarChart3,
-  User,
   TrendingUp,
+  User,
 } from "lucide-react";
 
 
 export default function OpinionPage() {
   const { language, t } = useLanguage();
 
-  // Step state:
-  // 1 = Initial YES/NO question
-  // 2 = Branching question (expectations or reasons)
-  // 3 = Optional Details Form (नाम, पिता का नाम, संपर्क - वैकल्पिक)
-  // 4 = Live Poll Results & Total Votes
+  // 1 = Initial question, 2 = follow-up, 3 = optional details, 4 = live results
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [voteChoice, setVoteChoice] = useState<VoteChoice | null>(null);
   const [surveyResponseId, setSurveyResponseId] = useState<string>("");
-  // Poll linkage: stored after vote is cast, passed to post-vote details
   const [votedPollId, setVotedPollId] = useState<string>("");
   const [votedOptionId, setVotedOptionId] = useState<string>("");
 
@@ -65,7 +60,7 @@ export default function OpinionPage() {
   const [selectedNoReason, setSelectedNoReason] = useState<string>("");
   const [customNoReason, setCustomNoReason] = useState<string>("");
 
-  // Optional Post-Vote Details State (name, fatherName, etc.)
+  // Optional Post-Vote Personal Details State
   const [fullName, setFullName] = useState("");
   const [fatherName, setFatherName] = useState("");
   const [mobileNumber, setMobileNumber] = useState("");
@@ -94,7 +89,7 @@ export default function OpinionPage() {
         setActivePoll(pollData);
 
         if (typeof window !== "undefined") {
-          const voted = localStorage.getItem("budivada_voted_opinion_session");
+          const voted = localStorage.getItem("janawaaz_voted_opinion_session");
           if (voted === "true") {
             setHasVotedBefore(true);
           }
@@ -156,7 +151,7 @@ export default function OpinionPage() {
     );
   };
 
-  // Step 2 -> Step 3 (Submit survey anonymously, then show optional details)
+  // Submit the opinion anonymously, then proceed to optional details form.
   const handleSurveySubmit = async (isSkip = false) => {
     if (!voteChoice) return;
     setSubmitting(true);
@@ -172,18 +167,17 @@ export default function OpinionPage() {
       });
 
       setSurveyResponseId(result.responseId);
-      // Store the poll+option linkage for post-vote details
       if (result.pollId) setVotedPollId(result.pollId);
       if (result.optionId) setVotedOptionId(result.optionId);
 
       // Mark local session
       if (typeof window !== "undefined") {
-        localStorage.setItem("budivada_voted_opinion_session", "true");
+        localStorage.setItem("janawaaz_voted_opinion_session", "true");
         setHasVotedBefore(true);
       }
 
       await refreshStats();
-      // Move to Step 3: Optional Voter Details form
+      // Move to Step 3: Optional Personal Details Form
       setStep(3);
     } catch (err) {
       console.error("Survey submission failed:", err);
@@ -193,13 +187,11 @@ export default function OpinionPage() {
     }
   };
 
-
-  // Step 3 -> Step 4 (Save optional details if filled, then show results)
+  // Step 3 -> Step 4: Save voluntary contact details if user filled any
   const handleSavePostVoteDetails = async () => {
     setSubmittingDetails(true);
     try {
       if (fullName.trim() || fatherName.trim() || mobileNumber.trim() || locality.trim() || notes.trim()) {
-        // Determine human-readable vote choice label for admin display
         const choiceLabel = voteChoice === "yes"
           ? "हाँ (समर्थन पर विचार)"
           : "नहीं (अन्य विकल्प / अनिर्णित)";
@@ -220,13 +212,12 @@ export default function OpinionPage() {
       setStep(4);
     } catch (err) {
       console.error("Failed to save post-vote details:", err);
-      // Still proceed to results so user isn't stuck
+      // Still proceed to results
       setStep(4);
     } finally {
       setSubmittingDetails(false);
     }
   };
-
 
   const handleSkipDetails = () => {
     setStep(4);
@@ -325,22 +316,22 @@ export default function OpinionPage() {
                 </p>
               </div>
 
-              {/* TWO LARGE TOUCH-FRIENDLY BUTTONS */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 pt-2">
+              {/* TWO LARGE, SIMPLE & BEAUTIFUL TOUCH-FRIENDLY BUTTONS */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 pt-3">
                 {/* YES Option */}
                 <button
                   type="button"
                   onClick={() => handleSelectVote("yes")}
-                  className="group flex flex-col items-center justify-center p-8 rounded-3xl bg-village-50 hover:bg-village-700 hover:text-white border-3 border-village-600 text-village-900 shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer text-center space-y-3"
+                  className="group relative flex flex-col items-center justify-center p-7 sm:p-9 rounded-3xl bg-gradient-to-b from-emerald-50 via-white to-emerald-50/30 hover:from-emerald-600 hover:to-emerald-700 hover:text-white border-3 border-emerald-500 hover:border-emerald-600 text-emerald-950 shadow-md hover:shadow-2xl hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer text-center space-y-3"
                 >
-                  <div className="w-16 h-16 rounded-full bg-village-600 text-white group-hover:bg-white group-hover:text-village-800 flex items-center justify-center shadow-md transition-colors">
-                    <Check className="w-9 h-9 stroke-[3]" />
+                  <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-emerald-600 text-white group-hover:bg-white group-hover:text-emerald-700 flex items-center justify-center shadow-md transition-all">
+                    <Check className="w-9 h-9 sm:w-11 sm:h-11 stroke-[3]" />
                   </div>
-                  <div>
-                    <span className="text-2xl font-black block tracking-wide">
-                      {t.surveyVoteYes}
+                  <div className="space-y-1">
+                    <span className="text-2xl sm:text-3xl font-black block tracking-wide">
+                      हाँ (YES)
                     </span>
-                    <span className="text-xs text-village-700 group-hover:text-emerald-100 font-medium">
+                    <span className="text-xs sm:text-sm text-emerald-800 group-hover:text-emerald-100 font-semibold block">
                       हाँ, समर्थन पर विचार कर रहे हैं
                     </span>
                   </div>
@@ -350,17 +341,17 @@ export default function OpinionPage() {
                 <button
                   type="button"
                   onClick={() => handleSelectVote("no")}
-                  className="group flex flex-col items-center justify-center p-8 rounded-3xl bg-slate-50 hover:bg-slate-800 hover:text-white border-3 border-slate-300 hover:border-slate-800 text-slate-800 shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer text-center space-y-3"
+                  className="group relative flex flex-col items-center justify-center p-7 sm:p-9 rounded-3xl bg-gradient-to-b from-slate-50 via-white to-slate-100/50 hover:from-slate-800 hover:to-slate-900 hover:text-white border-3 border-slate-300 hover:border-slate-800 text-slate-800 shadow-md hover:shadow-2xl hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer text-center space-y-3"
                 >
-                  <div className="w-16 h-16 rounded-full bg-slate-300 text-slate-700 group-hover:bg-white group-hover:text-slate-800 flex items-center justify-center shadow-md transition-colors">
-                    <span className="text-2xl font-bold">✕</span>
+                  <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-slate-200 text-slate-700 group-hover:bg-white group-hover:text-slate-900 flex items-center justify-center shadow-md transition-all">
+                    <span className="text-3xl font-black">✕</span>
                   </div>
-                  <div>
-                    <span className="text-2xl font-black block tracking-wide">
-                      {t.surveyVoteNo}
+                  <div className="space-y-1">
+                    <span className="text-2xl sm:text-3xl font-black block tracking-wide">
+                      नहीं (NO)
                     </span>
-                    <span className="text-xs text-slate-500 group-hover:text-slate-300 font-medium">
-                      नहीं, अन्य विकल्प या विचार नहीं
+                    <span className="text-xs sm:text-sm text-slate-600 group-hover:text-slate-200 font-semibold block">
+                      नहीं, अन्य विकल्प या अनिर्णित
                     </span>
                   </div>
                 </button>
@@ -598,7 +589,7 @@ export default function OpinionPage() {
           )}
 
           {/* ============================================================== */}
-          {/* STEP 3: OPTIONAL VOTER DETAILS FORM (वोट देने के बाद नाम, पिता का नाम) */}
+          {/* STEP 3: OPTIONAL VOTER DETAILS FORM (वैकल्पिक व्यक्तिगत विवरण) */}
           {/* ============================================================== */}
           {step === 3 && (
             <div className="bg-white rounded-3xl p-6 sm:p-10 border border-slate-200 shadow-xl space-y-6">
@@ -607,10 +598,10 @@ export default function OpinionPage() {
                 <CheckCircle2 className="w-6 h-6 text-emerald-600 shrink-0" />
                 <div>
                   <h3 className="font-extrabold text-emerald-950 text-base">
-                    धन्यवाद! आपका मत सुरक्षित व गोपनीय दर्ज हो गया है।
+                    धन्यवाद! आपकी राय सुरक्षित व गोपनीय दर्ज कर ली गई है।
                   </h3>
                   <p className="text-xs text-emerald-800">
-                    आपकी राय दर्ज हो चुकी है। अब आप चाहें तो संपर्क हेतु अपना विवरण दे सकते हैं।
+                    आपका मत रिकॉर्ड हो चुका है। अब आप चाहें तो संपर्क एवं विकास सुझाव हेतु अपना विवरण दे सकते हैं।
                   </p>
                 </div>
               </div>
@@ -684,7 +675,7 @@ export default function OpinionPage() {
                       type="text"
                       value={locality}
                       onChange={(e) => setLocality(e.target.value)}
-                      placeholder="उदा. वार्ड नं 3, मुख्य बाजार"
+                      placeholder="उदा. वार्ड 4, कुम्हार मोहल्ला"
                       className="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-village-600 text-sm"
                     />
                   </div>
@@ -693,26 +684,26 @@ export default function OpinionPage() {
                 {/* Additional Notes */}
                 <div className="space-y-1.5">
                   <label className="block text-xs font-bold text-slate-700">
-                    कोई अन्य विवरण या संदेश (Additional Notes) <span className="text-slate-400 font-normal">- वैकल्पिक</span>
+                    आपकी कोई विशेष टिप्पणी या गाँव की समस्या <span className="text-slate-400 font-normal">- वैकल्पिक</span>
                   </label>
-                  <input
-                    type="text"
+                  <textarea
+                    rows={2}
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
-                    placeholder="कोई विशेष संदेश या सुझाव जो आप प्रत्याशी को देना चाहें"
-                    className="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-village-600 text-sm"
+                    placeholder="गाँव या वार्ड से संबंधित कोई विशेष सुझाव..."
+                    className="w-full px-4 py-2 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-village-600 text-sm resize-none"
                   />
                 </div>
               </div>
 
-              {/* Action Buttons: Save & View Results or Skip */}
-              <div className="pt-3 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-slate-100">
+              {/* ACTION BUTTONS */}
+              <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={handleSkipDetails}
-                  className="w-full sm:w-auto px-5 py-3 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs sm:text-sm transition-colors"
+                  className="w-full sm:w-auto px-5 py-3 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs sm:text-sm transition-colors text-center"
                 >
-                  विवरण न देकर सीधे परिणाम देखें (Skip)
+                  छोड़ें और परिणाम देखें (Skip)
                 </button>
 
                 <button
@@ -722,10 +713,7 @@ export default function OpinionPage() {
                   className="w-full sm:w-auto px-7 py-3 rounded-2xl bg-village-700 hover:bg-village-800 text-white font-extrabold text-xs sm:text-sm shadow-md transition-all flex items-center justify-center gap-2"
                 >
                   {submittingDetails ? (
-                    <>
-                      <RefreshCw className="w-4 h-4 animate-spin" />
-                      <span>सुरक्षित किया जा रहा है...</span>
-                    </>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
                   ) : (
                     <>
                       <span>विवरण सुरक्षित करें और परिणाम देखें</span>
@@ -748,7 +736,7 @@ export default function OpinionPage() {
                   <BarChart3 className="w-9 h-9" />
                 </div>
                 <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900">
-                  बुड़ीवाड़ा जनमत पोल परिणाम
+                  janawaaz.in — बुड़ीवाड़ा जनमत पोल परिणाम
                 </h2>
                 <p className="text-xs sm:text-sm text-slate-600 max-w-md mx-auto">
                   गाँव के नागरिकों द्वारा साझा की गई सामूहिक राय का सीधा सांख्यिकीय अवलोकन
@@ -851,7 +839,7 @@ export default function OpinionPage() {
               <div className="p-4 rounded-2xl bg-cream-100 border border-cream-200 text-xs text-slate-700 text-left flex items-start gap-3">
                 <ShieldCheck className="w-5 h-5 text-village-700 shrink-0 mt-0.5" />
                 <p>
-                  <strong>गोपनीयता की गारंटी:</strong> सभी मत पूर्णतः सुरक्षित हैं। यह पोल केवल ग्राम पंचायत बुड़ीवाड़ा के विकास एवं जन-अपेक्षाओं को समझने के लिए संचालित किया जा रहा है।
+                  <strong>गोपनीयता की गारंटी:</strong> सभी मत पूर्णतः सुरक्षित हैं। यह पोल केवल ग्राम पंचायत बुड़ीवाड़ा के विकास एवं जन-अपेक्षाओं को समझने के लिए janawaaz.in पर संचालित किया जा रहा है।
                 </p>
               </div>
 

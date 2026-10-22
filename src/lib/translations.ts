@@ -160,7 +160,7 @@ export interface Translations {
 export const translations: Record<Language, Translations> = {
   hi: {
     // Navigation
-    siteTitle: "बुड़ीवाड़ा जन-संवाद पोर्टल",
+    siteTitle: "janawaaz.in — बुड़ीवाड़ा जन-संवाद पोर्टल",
     candidateName: "श्री मोहन सिंह जी",
     villageName: "ग्राम पंचायत बुड़ीवाड़ा",
     candidateCategory: "निर्दलीय (Independent) सरपंच प्रत्याशी",
@@ -175,9 +175,9 @@ export const translations: Record<Language, Translations> = {
     navLanguageToggle: "English",
 
     // Hero Section
-    heroBadge: "निर्दलीय सरपंच प्रत्याशी • बुड़ीवाड़ा",
-    heroHeadline: "गाँव की आवाज, गाँव का विकास",
-    heroSubheadline: "श्री मोहन सिंह जी की निष्पक्ष पहल — बुड़ीवाड़ा के प्रत्येक नागरिक की समस्या, सुझाव और अपेक्षा को सुनना और गाँव की प्राथमिकताओं के आधार पर कार्य करना।",
+    heroBadge: "janawaaz.in • राजस्थान जन-संवाद एवं जनमत मंच",
+    heroHeadline: "जनता की आवाज़, राजस्थान का फैसला",
+    heroSubheadline: "राजस्थान के नागरिकों की समस्याओं, सुझावों एवं चुनावी जनमत का स्वतंत्र मंच। वर्तमान सक्रिय जनमत पोल: श्री मोहन सिंह जी (निर्दलीय सरपंच प्रत्याशी, बुड़ीवाड़ा)।",
     btnGiveOpinion: "अपनी राय दें",
     btnReportProblem: "गाँव की समस्याएँ बताएं",
     btnContactTeam: "समस्या समाधान हेतु संपर्क करें",
@@ -313,11 +313,11 @@ export const translations: Record<Language, Translations> = {
     visitingHours: "जन-सुनवाई समय: प्रतिदिन प्रातः 8:00 से 11:00 बजे एवं सायं 5:00 से 8:00 बजे",
     helplinePhone: "हेल्पलाइन / संपर्क: +91 98290 XXXXX",
     privacyNoticeSummary: "इस पोर्टल पर प्रविष्टियाँ सुरक्षित हैं। राजनीतिक राय को कभी भी संपर्क डेटा के साथ नहीं मिलाया जाता।",
-    copyrightText: "© 2026 ग्राम पंचायत बुड़ीवाड़ा जन-संवाद पोर्टल | सर्वाधिकार सुरक्षित।",
+    copyrightText: "© 2026 janawaaz.in | बुड़ीवाड़ा जन-संवाद पोर्टल | सर्वाधिकार सुरक्षित।",
   },
   en: {
     // Navigation
-    siteTitle: "Budivada Jan-Samvad Portal",
+    siteTitle: "janawaaz.in — Budivada Citizen Portal",
     candidateName: "Shri Mohan Singh Ji",
     villageName: "Gram Panchayat Budivada",
     candidateCategory: "Independent Sarpanch Candidate",
@@ -332,9 +332,9 @@ export const translations: Record<Language, Translations> = {
     navLanguageToggle: "हिंदी",
 
     // Hero Section
-    heroBadge: "Independent Sarpanch Candidate • Budivada",
-    heroHeadline: "Voice of the Village, Development of the Village",
-    heroSubheadline: "An initiative by Shri Mohan Singh Ji — listening to every resident's problems, suggestions, and expectations to set unbiased development priorities.",
+    heroBadge: "janawaaz.in • Rajasthan Public Opinion Platform",
+    heroHeadline: "Voice of Citizens, Verdict of Rajasthan",
+    heroSubheadline: "Independent digital platform for citizen issues and election polls across Rajasthan. Featured active poll: Shri Mohan Singh Ji (Independent Sarpanch Candidate, Budivada).",
     btnGiveOpinion: "Give Your Opinion",
     btnReportProblem: "Report Village Issues",
     btnContactTeam: "Contact for Grievance Redressal",
@@ -470,6 +470,6 @@ export const translations: Record<Language, Translations> = {
     visitingHours: "Citizen Hours: Daily 8:00 AM - 11:00 AM & 5:00 PM - 8:00 PM",
     helplinePhone: "Helpline / Contact: +91 98290 XXXXX",
     privacyNoticeSummary: "Entries on this portal are protected. Political views are strictly segregated from personal contact details.",
-    copyrightText: "© 2026 Gram Panchayat Budivada Jan-Samvad Portal | All Rights Reserved.",
+    copyrightText: "© 2026 janawaaz.in | Budivada Citizen Feedback Portal | All Rights Reserved.",
   },
 };

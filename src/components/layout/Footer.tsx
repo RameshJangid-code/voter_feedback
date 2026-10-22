@@ -23,24 +23,24 @@ export function Footer() {
     <footer className="bg-slate-900 text-slate-300 pt-16 pb-12 border-t border-slate-800">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10">
-          {/* Col 1: Candidate identity & ethics */}
+          {/* Col 1: Platform identity & ethics */}
           <div className="space-y-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-village-700 text-white flex items-center justify-center font-bold text-lg shadow">
-                म
+              <div className="w-10 h-10 rounded-xl bg-village-700 text-white flex items-center justify-center font-bold text-xl shadow">
+                ज
               </div>
               <div>
-                <h3 className="font-bold text-lg text-white">{t.candidateName}</h3>
-                <p className="text-xs text-village-400 font-medium">{t.candidateCategory}</p>
+                <h3 className="font-bold text-lg text-white">Janawaaz.in</h3>
+                <p className="text-xs text-village-400 font-medium">राजस्थान जन-संवाद एवं जनमत मंच</p>
               </div>
             </div>
             <p className="text-sm text-slate-400 leading-relaxed">
-              {t.footerAboutText}
+              पूरे राजस्थान के नागरिकों की समस्याओं, सुझावों और स्वतंत्र जनमत सर्वेक्षण का एक निष्पक्ष डिजिटल मंच। वर्तमान में सक्रिय जनमत पोल: ग्राम पंचायत बुड़ीवाड़ा।
             </p>
             <div className="pt-2">
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-800 text-xs text-emerald-400 border border-slate-700">
                 <Shield className="w-3.5 h-3.5" />
-                <span>100% निष्पक्ष • ग्राम-हित सर्वोपरि</span>
+                <span>100% निष्पक्ष • स्वतंत्र जनमत</span>
               </span>
             </div>
           </div>
@@ -116,7 +116,7 @@ export function Footer() {
               </div>
               <div className="flex items-center gap-2.5">
                 <Mail className="w-4 h-4 text-village-400 shrink-0" />
-                <span>contact@budivada-sarpanch.in</span>
+                <span>contact@janawaaz.in</span>
               </div>
             </div>
           </div>
@@ -149,7 +149,7 @@ export function Footer() {
         <div className="mt-12 pt-6 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-400">
           <p>{t.copyrightText}</p>
           <p className="flex items-center gap-1">
-            <span>बुड़ीवाड़ा ग्रामवासियों के सशक्तिकरण हेतु समर्पित</span>
+            <span>janawaaz.in — बुड़ीवाड़ा ग्रामवासियों के सशक्तिकरण हेतु समर्पित</span>
             <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500" />
           </p>
         </div>
