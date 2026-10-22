@@ -11,7 +11,6 @@ import {
   AlertCircle,
   Loader2,
   ArrowLeft,
-  Info,
 } from "lucide-react";
 
 export default function AdminLoginPage() {
@@ -50,12 +49,6 @@ export default function AdminLoginPage() {
     } finally {
       setSubmitting(false);
     }
-  };
-
-  const handleFillDemoCredentials = () => {
-    setEmail("admin@janawaaz.in");
-    setPassword("JanawaazAdmin2026!");
-    setErrorMessage("");
   };
 
   return (
@@ -104,7 +97,7 @@ export default function AdminLoginPage() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="admin@janawaaz.in"
+                  placeholder="admin@example.com"
                   className="w-full pl-9 pr-4 py-3 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white placeholder-slate-600 focus:border-village-500 focus:ring-1 focus:ring-village-500 outline-none"
                   required
                 />
@@ -146,28 +139,6 @@ export default function AdminLoginPage() {
               )}
             </button>
           </form>
-
-          {process.env.NODE_ENV !== "production" && (
-          <div className="pt-4 border-t border-slate-800 space-y-2">
-            <div className="flex items-center justify-between text-xs text-slate-400">
-              <span className="flex items-center gap-1">
-                <Info className="w-3.5 h-3.5 text-village-400" />
-                <span>डेमो / मूल्यांकन क्रेडेंशियल्स:</span>
-              </span>
-              <button
-                type="button"
-                onClick={handleFillDemoCredentials}
-                className="text-village-400 hover:underline font-semibold"
-              >
-                स्वतः भरें (Auto-fill)
-              </button>
-            </div>
-            <div className="bg-slate-950 p-2.5 rounded-lg border border-slate-800 font-mono text-[11px] text-slate-300 space-y-1">
-              <div>ईमेल: <span className="text-emerald-400">admin@janawaaz.in</span> (या admin@budivada.in)</div>
-              <div>पासवर्ड: <span className="text-emerald-400">JanawaazAdmin2026!</span> (या budivada2026)</div>
-            </div>
-          </div>
-          )}
         </div>
 
         <div className="text-center text-xs text-slate-500">
