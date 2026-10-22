@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 
 import {
@@ -7,7 +8,6 @@ import {
 import { PostVoteDetail } from "@/types";
 import { isAdminIdentity, requireAdmin } from "@/lib/adminAuth";
 
-export const dynamic = "force-dynamic";
 
 // GET — admin only: retrieve all voluntary post-vote details
 export async function GET(req: NextRequest) {

@@ -1,6 +1,5 @@
-import { NextRequest, NextResponse } from "next/server";
-
 export const dynamic = "force-dynamic";
+import { NextRequest, NextResponse } from "next/server";
 import { mongoGetAllFeedback, mongoInsertFeedback, mongoInsertContactRequest } from "@/lib/mongoService";
 import { ProblemCategory, ProblemPriority, PublicFeedback, FollowupRequest } from "@/types";
 import { isAdminIdentity, requireAdmin } from "@/lib/adminAuth";
