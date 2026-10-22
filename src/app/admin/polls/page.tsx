@@ -5,6 +5,7 @@ import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { AdminGuard } from "@/components/admin/AdminGuard";
 import {
   getAllPolls,
+  getActivePoll,
   createPoll,
   setActivePoll,
   togglePollStatus,
@@ -62,17 +63,38 @@ export default function AdminPollsPage() {
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   const loadAll = async () => {
+    // 1. Stats (Total Votes, YES/NO percentages)
     try {
-      const [pData, sData, vData] = await Promise.all([
-        getAllPolls(),
-        getAggregateStats(),
-        getPostVoteDetails(),
-      ]);
-      setPolls(pData);
-      setStats(sData);
-      setVoterDetails(vData);
+      const sData = await getAggregateStats();
+      if (sData) setStats(sData);
     } catch (e) {
-      console.error("Failed to load polls & voter details:", e);
+      console.error("Failed to load aggregate stats:", e);
+    }
+
+    // 2. Polls
+    try {
+      const pData = await getAllPolls();
+      if (Array.isArray(pData) && pData.length > 0) {
+        setPolls(pData);
+      } else {
+        const active = await getActivePoll();
+        if (active) setPolls([active]);
+      }
+    } catch {
+      try {
+        const active = await getActivePoll();
+        if (active) setPolls([active]);
+      } catch (e) {
+        console.error("Failed to load polls:", e);
+      }
+    }
+
+    // 3. Voter Details
+    try {
+      const vData = await getPostVoteDetails();
+      if (Array.isArray(vData)) setVoterDetails(vData);
+    } catch (e) {
+      console.error("Failed to load voter details:", e);
     }
   };
 

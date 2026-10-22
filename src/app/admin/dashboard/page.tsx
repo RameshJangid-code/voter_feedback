@@ -43,15 +43,25 @@ export default function AdminDashboardPage() {
 
   useEffect(() => {
     async function load() {
+      // 1. Load aggregate stats independently so vote counts always render
       try {
-        const [sData, fData] = await Promise.all([
-          getAggregateStats(),
-          getAllFeedback(true),
-        ]);
-        setStats(sData);
-        setAllFeedbackList(fData);
+        const sData = await getAggregateStats();
+        if (sData) setStats(sData);
       } catch (e) {
-        console.error("Dashboard data load failed:", e);
+        console.error("Stats load failed:", e);
+      }
+
+      // 2. Load feedback list
+      try {
+        const fData = await getAllFeedback(true);
+        if (Array.isArray(fData)) setAllFeedbackList(fData);
+      } catch {
+        try {
+          const publicF = await getAllFeedback(false);
+          if (Array.isArray(publicF)) setAllFeedbackList(publicF);
+        } catch (e) {
+          console.error("Feedback load failed:", e);
+        }
       }
     }
     load();
